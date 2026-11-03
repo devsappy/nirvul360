@@ -16,8 +16,8 @@ if env_path.exists():
 else:
     load_dotenv(override=True)
 
-# Ensure backend_py is in pythonpath
-backend_dir = root_dir / "backend_py"
+# Ensure backend is in pythonpath
+backend_dir = root_dir / "backend"
 sys.path.insert(0, str(backend_dir))
 
 if __name__ == "__main__":

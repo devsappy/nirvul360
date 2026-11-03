@@ -13,8 +13,8 @@ from dotenv import load_dotenv
 root_dir = Path(__file__).resolve().parent
 load_dotenv(root_dir / ".env", override=True)
 
-# Add backend_py to sys.path
-backend_dir = root_dir / "backend_py"
+# Add backend to sys.path
+backend_dir = root_dir / "backend"
 sys.path.insert(0, str(backend_dir))
 
 def run_migration():

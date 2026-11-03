@@ -12,7 +12,7 @@ services:
     image: node:20-alpine
     working_dir: /app
     volumes:
-      - ./frontend_next:/app
+      - ./frontend:/app
     command: sh -c "npm ci && npm run build && npm start"
     ports:
       - "3000:3000"

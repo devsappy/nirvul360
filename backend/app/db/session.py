@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 _here = Path(__file__).resolve().parent
 _candidates = [
     _here.parent.parent.parent / ".env", # project root
-    _here.parent.parent / ".env",        # backend_py
+    _here.parent.parent / ".env",        # backend
     Path.cwd() / ".env"
 ]
 for _env_file in _candidates:

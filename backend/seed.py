@@ -7,7 +7,7 @@ import os
 import sys
 from pathlib import Path
 
-# Add backend_py to sys.path
+# Add backend to sys.path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from app.db.session import open_db, get_db, insert

@@ -2,11 +2,11 @@
 
 ## Project layout
 
-- `backend_py/` — FastAPI HTTP API, domain rules, database access and integrations.
+- `backend/` — FastAPI HTTP API, domain rules, database access and integrations.
   - `app/` — application code (api, domain, db, whatsapp, lib).
   - `tests/` — automated backend tests (pytest).
   - `data/` — local SQLite runtime data (dev only, not source).
-- `frontend_next/` — Next.js (App Router) web dashboard.
+- `frontend/` — Next.js (App Router) web dashboard.
 - `supabase/` — Postgres schema + seed for production (Supabase).
 - `Dockerfile.backend`, `docker-compose.yml` — containerized deployment.
 
@@ -14,7 +14,7 @@
 
 Backend:
 ```bash
-cd backend_py
+cd backend
 pip install -r requirements.txt
 python -m uvicorn app.main:app --reload --port 8000
 # first run auto-seeds SQLite demo data
@@ -22,7 +22,7 @@ python -m uvicorn app.main:app --reload --port 8000
 
 Frontend:
 ```bash
-cd frontend_next
+cd frontend
 npm ci
 npm run dev   # http://localhost:3000
 ```
@@ -48,16 +48,16 @@ Copy `.env.example` to `.env` and fill in. Key variables:
 1. Provision Supabase Postgres; run `supabase/schema.sql` then `supabase/seed.sql` (or use `migrate_to_supabase.py`).
 2. Set `.env` with `DATABASE_URL` pointing at Supabase and secrets.
 3. `docker compose up -d --build` (backend on :8000).
-4. Deploy `frontend_next` to Vercel; set `NEXT_PUBLIC_API_URL` to the backend URL.
+4. Deploy `frontend` to Vercel; set `NEXT_PUBLIC_API_URL` to the backend URL.
 
 ## Verification
 
 ```bash
-cd backend_py && python -m pytest tests -q   # all tests must pass
-cd frontend_next && npm run build           # must succeed
+cd backend && python -m pytest tests -q   # all tests must pass
+cd frontend && npm run build           # must succeed
 ```
 
-Acceptance criteria (12 checks) are encoded as tests in `backend_py/tests/` (engine, exceptions, settlements, prices, hierarchy, whatsapp, api, integrations, security).
+Acceptance criteria (12 checks) are encoded as tests in `backend/tests/` (engine, exceptions, settlements, prices, hierarchy, whatsapp, api, integrations, security).
 
 ## Notes
 

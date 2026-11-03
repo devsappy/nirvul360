@@ -24,10 +24,10 @@ htmlcov/
 
 # Next.js & Frontend dependencies
 node_modules/
-frontend_next/node_modules/
-frontend_next/.next/
-frontend_next/out/
-frontend_next/build/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
 .next/
 out/
 build/
@@ -35,9 +35,9 @@ build/
 next-env.d.ts
 
 # Database local artifacts
-backend_py/data/*.db
-backend_py/data/*.db-shm
-backend_py/data/*.db-wal
+backend/data/*.db
+backend/data/*.db-shm
+backend/data/*.db-wal
 *.db
 *.sqlite
 *.sqlite3

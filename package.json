@@ -5,10 +5,10 @@
   "description": "Automated accounting for Bangladeshi e-commerce and f-commerce merchants (FastAPI + Next.js + Supabase)",
   "scripts": {
     "dev:backend": "python run_backend.py",
-    "dev:frontend": "cd frontend_next && npm run dev",
-    "build:frontend": "cd frontend_next && npm run build",
-    "test:backend": "python -m pytest backend_py/tests/ -v",
-    "seed:backend": "python backend_py/seed.py"
+    "dev:frontend": "cd frontend && npm run dev",
+    "build:frontend": "cd frontend && npm run build",
+    "test:backend": "python -m pytest backend/tests/ -v",
+    "seed:backend": "python backend/seed.py"
   },
   "optionalDependencies": {
     "@anthropic-ai/sdk": "^0.70.0"

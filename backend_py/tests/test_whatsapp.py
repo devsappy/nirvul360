@@ -22,7 +22,7 @@ def test_whatsapp_bangla_parser():
     assert parsed2['amount'] == 1500000
     assert parsed2['head'] == 'salary'
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_whatsapp_two_step_confirmation_machine():
     m_id = create_merchant({'name': 'Fashion Store', 'phone': '01700000000'})
     u_id = create_user(m_id, {

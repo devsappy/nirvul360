@@ -84,11 +84,14 @@ async def get_dashboard(
         m_id
     )
 
+    from app.domain.merchants import get_settings
+    s = get_settings(m_id)
+    integ = s.get('integrations', {}) if isinstance(s, dict) else {}
     integrations = {
-        "courier": True,
-        "meta": False,
-        "whatsapp": True,
-        "supabase": True
+        "courier": bool(integ.get('courier_website', {}).get('connected')),
+        "meta": bool(integ.get('meta_ads', {}).get('connected')),
+        "whatsapp": bool(integ.get('whatsapp_business', {}).get('connected')),
+        "supabase": bool(__import__('os').getenv('SUPABASE_URL')),
     }
 
     return {

@@ -7,7 +7,10 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from app.api.auth import get_current_user
 from app.lib.events import event_bus
-from app.db.supabase import get_supabase_status
+def get_supabase_status():
+    import os
+    url = os.getenv("SUPABASE_URL")
+    return {"configured": bool(url), "connected": False, "pending_sync_count": 0}
 from app.lib.dates import now_iso
 
 router = APIRouter(prefix="/api", tags=["Realtime"])
@@ -53,10 +56,9 @@ async def events_stream(request: Request, current: dict = Depends(get_current_us
     )
 
 @router.get("/system/status")
-async def system_status():
-    from app.db.supabase import get_supabase_status
+async def system_status(current: dict = Depends(get_current_user)):
     import os
-    sup = get_supabase_status()
+    sup = {"configured": bool(os.getenv("SUPABASE_URL")), "connected": False, "pending_sync_count": 0}
     return {
         "status": "ok",
         "db": "connected",

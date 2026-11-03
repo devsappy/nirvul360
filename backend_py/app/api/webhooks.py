@@ -17,8 +17,29 @@ from app.lib.money import to_poisha
 router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
 
 @router.post("/courier")
-async def courier_webhook(request: Request, merchant_id: Optional[int] = Query(1)):
+async def courier_webhook(request: Request):
+    secret = os.getenv("COURIER_WEBHOOK_SECRET")
+    if secret and request.headers.get("X-Webhook-Secret") != secret:
+        raise HTTPException(status_code=403, detail="invalid webhook secret")
     payload = await request.json()
+    # resolve merchant
+    merchant_slug = payload.get('merchant')
+    merchant_id = None
+    if merchant_slug:
+        from app.db.session import one
+        m = one("SELECT id FROM merchants WHERE slug = ? OR code = ?", str(merchant_slug), str(merchant_slug))
+        if m:
+            merchant_id = m['id']
+    if not merchant_id:
+        # try courier code
+        code = payload.get('courier_code') or payload.get('courier')
+        if code:
+            from app.db.session import one
+            m = one("SELECT id FROM merchants WHERE code = ?", str(code))
+            if m:
+                merchant_id = m['id']
+    if not merchant_id:
+        merchant_id = 1
     cid = payload.get('consignment_id') or payload.get('consignmentId') or payload.get('tracking_code')
     if not cid:
         raise HTTPException(status_code=400, detail="consignment_id required")

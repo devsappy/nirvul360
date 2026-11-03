@@ -171,7 +171,9 @@ async def get_system_stats(current: Dict[str, Any] = Depends(require_admin)):
     """
     System-wide SaaS statistics for developers.
     """
-    from app.db.supabase import get_supabase_status
+    def get_supabase_status():
+        import os
+        return {"configured": bool(os.getenv("SUPABASE_URL")), "connected": False, "pending_sync_count": 0}
     from app.lib.events import event_bus
 
     tenants_count = one("SELECT COUNT(*) as c FROM merchants")["c"]

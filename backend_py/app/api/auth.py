@@ -67,15 +67,27 @@ def require_super_admin(current: Dict[str, Any] = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Permission denied: Super Admin access required.")
     return current
 
+import time as _time
+_login_attempts: dict = {}
+
 @router.post("/auth/login")
-async def login(req: LoginRequest, response: Response):
+async def login(req: LoginRequest, request: Request, response: Response):
+    ip = request.client.host if request.client else "unknown"
+    now = _time.time()
+    attempts = [t for t in _login_attempts.get(ip, []) if now - t < 900]
+    if len(attempts) >= 5:
+        raise HTTPException(status_code=429, detail="too many login attempts")
+    _login_attempts[ip] = attempts
+
     target = (req.email or req.phone or req.identifier or "").strip().lower()
     if not target:
         raise HTTPException(status_code=400, detail="email or phone number required")
 
     user = one("SELECT * FROM users WHERE lower(COALESCE(email, '')) = ? OR lower(COALESCE(whatsapp, '')) = ?", target, target)
     if not user or not verify_password(req.password, user.get('password_hash') or ''):
+        _login_attempts[ip] = attempts + [now]
         raise HTTPException(status_code=401, detail="wrong email or password")
+    _login_attempts[ip] = []
 
     token = secrets.token_hex(32)
     expires = (datetime.now(timezone.utc) + timedelta(days=SESSION_DAYS)).isoformat()
@@ -86,12 +98,14 @@ async def login(req: LoginRequest, response: Response):
         'expires_at': expires,
     })
 
+    import os
     response.set_cookie(
         key="gm_session",
         value=token,
         max_age=SESSION_DAYS * 86400,
         httponly=True,
         samesite="lax",
+        secure=os.getenv("COOKIE_SECURE", "").lower() == "true",
         path="/"
     )
 

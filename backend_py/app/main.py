@@ -29,6 +29,7 @@ from app.api.admin import router as admin_router
 from app.api.products import router as products_router
 from app.api.exceptions import router as exceptions_router
 from app.api.settlements import router as settlements_router
+from app.api.reports import router as reports_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -62,9 +63,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+_cors_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -81,6 +83,7 @@ app.include_router(admin_router)
 app.include_router(products_router)
 app.include_router(exceptions_router)
 app.include_router(settlements_router)
+app.include_router(reports_router)
 
 @app.get("/health")
 def health_check():

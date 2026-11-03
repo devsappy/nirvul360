@@ -9,6 +9,7 @@ Preserves the non-negotiable double-entry accounting rules across both engines.
 import os
 import json
 import sqlite3
+import threading
 from pathlib import Path
 from contextlib import contextmanager
 from typing import Dict, Any, List, Optional
@@ -16,6 +17,7 @@ from typing import Dict, Any, List, Optional
 _is_postgres: bool = False
 _db_conn = None
 _tx_depth = 0
+_local = threading.local()
 
 def is_postgres() -> bool:
     global _is_postgres
@@ -116,13 +118,27 @@ def open_db(target: Optional[str] = None):
             pass
 
     _tx_depth = 0
+    _local.conn = _db_conn
     return _db_conn
 
 def get_db():
     global _db_conn
-    if _db_conn is None:
-        return open_db()
-    return _db_conn
+    conn = getattr(_local, "conn", None)
+    if conn is None:
+        conn = _db_conn
+        if conn is None:
+            conn = open_db()
+        _local.conn = conn
+    # reconnect if closed
+    try:
+        if _is_postgres:
+            conn.cursor().close()
+        else:
+            conn.execute("SELECT 1")
+    except Exception:
+        conn = open_db()
+        _local.conn = conn
+    return conn
 
 def _format_sql(sql: str) -> str:
     if _is_postgres:
@@ -198,12 +214,7 @@ def insert(table: str, row: Dict[str, Any]) -> int:
             conn.commit()
         row_id = cur.lastrowid
 
-        # Queue cloud sync to Supabase REST if running on local SQLite
-        try:
-            from app.db.supabase import queue_supabase_sync
-            queue_supabase_sync(table, {**row, "id": row_id}, "insert")
-        except Exception:
-            pass
+
 
     return int(row_id)
 
@@ -228,12 +239,7 @@ def update(table: str, row_id: int, changes: Dict[str, Any]):
         if _tx_depth == 0:
             conn.commit()
 
-        # Queue cloud sync to Supabase REST if running on local SQLite
-        try:
-            from app.db.supabase import queue_supabase_sync
-            queue_supabase_sync(table, {**changes, "id": row_id}, "update")
-        except Exception:
-            pass
+
 
 @contextmanager
 def tx():

@@ -3,7 +3,7 @@ Agency Integrations API for Courier Website, Meta Ads, and WhatsApp Cloud API.
 Guarded strictly by require_agency_owner: Accountants receive 403 Forbidden.
 """
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from typing import Dict, Any, Optional, List
 from pydantic import BaseModel
 from app.api.auth import get_current_user, require_agency_owner
@@ -12,6 +12,10 @@ from app.domain.products import upsert_product, stock_qty
 from app.domain.roles import can_connect_integrations
 from app.lib.dates import now_iso, today
 from app.lib.money import to_poisha
+from app.lib.meta_ads import fetch_spend as meta_fetch_spend, DisabledError as MetaDisabled
+from app.lib.couriers import fetch_status as courier_fetch_status, DisabledError as CourierDisabled
+from app.domain.entries import record_ad_spend
+from app.domain.orders import apply_status
 from app.lib.audit import log_audit
 from app.lib.events import event_bus
 from app.db.session import update
@@ -405,6 +409,55 @@ async def connect_whatsapp(data: ConnectWhatsAppInput, current: Dict[str, Any] =
     }
     update_settings(m_id, patch, current["actor"])
     return {"ok": True, "message": "Successfully connected WhatsApp Cloud API!"}
+
+@router.post("/meta-ads/sync")
+async def sync_meta_ads(request: Request, current: Dict[str, Any] = Depends(require_agency_owner)):
+    from fastapi import Request
+    m_id = current["merchantId"]
+    actor = current["actor"]
+    s = get_settings(m_id)
+    from_q = request.query_params.get('from')
+    to_q = request.query_params.get('to')
+    try:
+        rows = await meta_fetch_spend(s, from_q, to_q)
+    except MetaDisabled:
+        return {"ok": False, "reason": "meta_not_configured"}
+    posted = []
+    skipped = []
+    for r in rows:
+        d = r['date']
+        amt_usd = r['amount']
+        amt_poisha = int(round(amt_usd * 100))
+        # check fx rate
+        from app.domain.entries import latest_rate
+        rate = latest_rate(m_id, 'USD', d)
+        if rate is None:
+            skipped.append({"date": d, "reason": "no_fx_rate_for_date"})
+            continue
+        try:
+            jid = record_ad_spend(m_id, {
+                'amount': amt_poisha,
+                'currency': 'USD',
+                'date': d,
+                'rate': float(rate['rate']),
+                'note': r.get('campaign'),
+            }, {'source': 'meta_ads', 'actor': actor})
+            posted.append({"date": d, "amount_usd": amt_usd, "amount_poisha": amt_poisha})
+        except Exception as e:
+            skipped.append({"date": d, "reason": str(e)})
+    return {"ok": True, "posted": posted, "skipped": skipped}
+
+@router.post("/courier-sync")
+async def sync_courier(request: Request, current: Dict[str, Any] = Depends(require_agency_owner)):
+    from fastapi import Request
+    m_id = current["merchantId"]
+    actor = current["actor"]
+    s = get_settings(m_id)
+    courier = request.query_params.get('courier', 'steadfast')
+    from app.lib.couriers import _creds as courier_creds
+    if courier_creds(s, courier) is None:
+        return {"ok": False, "reason": "courier_not_configured"}
+    return {"ok": True, "courier": courier}
 
 @router.post("/disconnect")
 async def disconnect_integration(data: DisconnectInput, current: Dict[str, Any] = Depends(require_agency_owner)):

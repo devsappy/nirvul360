@@ -10,6 +10,7 @@ from app.domain.ledger import balance, balances_by_party
 from app.domain.exceptions import unresolved_totals
 from app.domain.products import cost_at
 from app.lib.dates import today, month_start, add_days
+from app.lib.money import format_taka_bn
 
 def account_totals(merchant_id: int, from_date: str, to_date: str) -> Dict[str, int]:
     rows = all(
@@ -317,3 +318,29 @@ def drilldown(merchant_id: int, metric: str, from_date: str, to_date: str) -> Di
     rows = all(sql, *params)
     total = sum(r['amount'] for r in rows)
     return {'metric': metric, 'total': total, 'rows': rows}
+
+
+def daily_summary_text(conn, merchant_id, for_date=None):
+    from app.lib.dates import add_days
+    d = for_date or today()
+    y = add_days(d, -1)
+    pnl = profit_and_loss(merchant_id, y, y)
+    r = one('SELECT COUNT(*) c, COALESCE(SUM(CASE WHEN status=''delivered'' THEN 1 ELSE 0 END),0) del, COALESCE(SUM(CASE WHEN status=''returned'' THEN 1 ELSE 0 END),0) ret, COUNT(*) tot FROM orders WHERE merchant_id=? AND order_date=? AND is_duplicate=0', merchant_id, y) if False else None
+    import sqlite3
+    cur = conn.execute('SELECT COUNT(*) AS tot, COALESCE(SUM(CASE WHEN status=''delivered'' THEN 1 ELSE 0 END),0) AS del, COALESCE(SUM(CASE WHEN status=''returned'' THEN 1 ELSE 0 END),0) AS ret FROM orders WHERE merchant_id=? AND order_date=? AND is_duplicate=0', (merchant_id, y))
+    row = cur.fetchone()
+    delivered = int(row['del'] if hasattr(row,'keys') else row[1])
+    returned = int(row['ret'] if hasattr(row,'keys') else row[2])
+    placed = int(row['tot'] if hasattr(row,'keys') else row[0])
+    rr = (returned/placed) if placed else 0
+    exc = 0
+    try:
+        from app.domain.exceptions import unresolved_totals
+        exc = unresolved_totals(merchant_id).get('total',0)
+    except Exception:
+        pass
+    rev = format_taka_bn(pnl['gross_sales'])
+    net = format_taka_bn(pnl['net_profit'])
+    text = 'Daily Summary ' + y + ':\nDelivered: ' + str(delivered) + '\nRevenue: ' + rev + '\nNet Profit: ' + net + '\nReturn rate: ' + ('%.1f' % (rr*100)) + '%\nUnresolved exceptions: ' + str(exc)
+    return text
+

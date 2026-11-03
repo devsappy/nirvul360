@@ -61,13 +61,22 @@ def parse_message(text: str) -> Dict[str, Any]:
     amount = extract_amount(text)
     head = detect_head(text)
     intent = 'expense'
-    
-    if any(w in text.lower() for w in ['তুললাম', 'তুলেছি', 'উত্তোলন', 'withdraw']):
-        intent = 'withdrawal'
+    lower = text.lower()
 
+    if any(w in lower for w in ['তুললাম', 'তুলেছি', 'উত্তোলন', 'withdraw']):
+        intent = 'withdrawal'
+    elif any(w in lower for w in ['purchase price', 'dami', 'দামি', 'ক্রয়মূল্য']):
+        intent = 'price_change'
+    elif any(w in lower for w in ['supplier payment', 'supplier pay', 'sup payment']):
+        intent = 'supplier_payment'
+
+    # extract product/supplier name naive: after keywords
+    name = None
+    # price_change: product name before price
     return {
         'intent': intent,
         'amount': amount,
         'head': head,
         'raw_text': text,
+        'name': name,
     }

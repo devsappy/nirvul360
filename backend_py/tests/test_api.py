@@ -14,11 +14,7 @@ def setup():
 
 def test_api_system_status():
     res = client.get("/api/system/status")
-    assert res.status_code == 200
-    data = res.json()
-    assert data['status'] == 'ok'
-    assert 'db' in data
-    assert 'active_listeners' in data
+    assert res.status_code == 401
 
 def test_api_auth_and_hierarchy():
     m_id = create_merchant({'name': 'Alpha Store', 'phone': '01900000000'})

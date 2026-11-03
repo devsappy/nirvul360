@@ -102,6 +102,12 @@ def commit_draft(user: Dict[str, Any], pending: Dict[str, Any]) -> str:
         if d['intent'] == 'expense':
             jid = record_expense(m, {'head': d['head'], 'amount': d['amount'], 'date': d['date'], 'note': d['note']}, ctx)
             ref = f"জার্নাল #{jid}"
+            from app.domain.exceptions import raised_unmatched_expense
+            if d['head'] == 'other_expense':
+                # Category could not be determined from the message: posted to
+                # 'other_expense' for now, and the queue asks the merchant to assign
+                # the right financial head.
+                raised_unmatched_expense(m, d['amount'], jid, d.get('note') or '', f"user:{user['id']}")
         elif d['intent'] == 'withdrawal':
             jid = record_withdrawal(m, {'amount': d['amount'], 'date': d['date'], 'note': d['note']}, ctx)
             ref = f"উত্তোলন #{jid}"

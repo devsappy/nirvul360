@@ -140,6 +140,7 @@ def dashboard(merchant_id: int, from_date: str, to_date: str) -> Dict[str, Any]:
     returned = int(orders_row['returned']) if orders_row else 0
     in_transit = int(orders_row['in_transit']) if orders_row else 0
     delivery_rate = (delivered / placed) if placed > 0 else None
+    return_rate = (returned / placed) if placed > 0 else None
 
     # Today's profit
     today_pnl = profit_and_loss(merchant_id, today(), today())
@@ -155,8 +156,140 @@ def dashboard(merchant_id: int, from_date: str, to_date: str) -> Dict[str, Any]:
             'delivered': delivered,
             'returned': returned,
             'delivery_rate': delivery_rate,
+            'return_rate': return_rate,
         }
     }
+
+def product_performance(merchant_id: int, from_date: str, to_date: str) -> Dict[str, Any]:
+    """
+    One row per product that had orders in the period. Revenue counts delivered
+    value only, COGS at the delivery-date cost, courier charges apportioned across
+    the products in each order. Ad spend cannot be attributed to products (no
+    campaign→product mapping in the schema), so it stays blank per row and is
+    reported once at the top level as unattributed_ad_spend_total.
+    """
+    from app.domain.products import cost_at
+
+    rows = all(
+        "SELECT i.product_id, p.name, p.sku, o.id AS order_id, o.status, o.total, "
+        "o.is_duplicate, o.order_date, o.delivered_date, i.qty, i.unit_price, i.line_total "
+        "FROM orders o JOIN order_items i ON i.order_id = o.id JOIN products p ON p.id = i.product_id "
+        "WHERE o.merchant_id = ? AND o.order_date >= ? AND o.order_date <= ? AND o.is_duplicate = 0",
+        merchant_id, from_date, to_date
+    )
+
+    prods: Dict[int, Dict[str, Any]] = {}
+    for r in rows:
+        pid = r['product_id']
+        pr = prods.setdefault(pid, {
+            'product_id': pid, 'name': r['name'], 'sku': r['sku'],
+            '_orders': set(), '_delivered': set(), '_returned': set(),
+        })
+        pr['_orders'].add(r['order_id'])
+        if r['status'] == 'delivered':
+            pr['_delivered'].add(r['order_id'])
+        elif r['status'] == 'returned':
+            pr['_returned'].add(r['order_id'])
+
+    # Delivered value per product (delivered_date inside the window)
+    value_rows = all(
+        "SELECT i.product_id, COALESCE(SUM(i.line_total), 0) AS v "
+        "FROM orders o JOIN order_items i ON i.order_id = o.id "
+        "WHERE o.merchant_id = ? AND o.status = 'delivered' AND o.is_duplicate = 0 "
+        "AND o.delivered_date >= ? AND o.delivered_date <= ? "
+        "GROUP BY i.product_id",
+        merchant_id, from_date, to_date
+    )
+    revenue_by_pid = {r['product_id']: int(r['v']) for r in value_rows}
+
+    # COGS and courier charges straight from the ledger (delivered postings)
+    cogs_rows = all(
+        "SELECT l.product_id, COALESCE(SUM(l.amount), 0) AS s "
+        "FROM journal_lines l JOIN journals j ON j.id = l.journal_id "
+        "WHERE l.merchant_id = ? AND l.account = 'cogs' AND l.entry_date >= ? AND l.entry_date <= ? "
+        "GROUP BY l.product_id",
+        merchant_id, from_date, to_date
+    )
+    cogs_by_pid = {r['product_id']: int(r['s']) for r in cogs_rows}
+
+    fee_rows = all(
+        "SELECT j.order_id, COALESCE(SUM(l.amount), 0) AS s "
+        "FROM journals j JOIN journal_lines l ON l.journal_id = j.id "
+        "WHERE j.merchant_id = ? AND l.account IN ('courier_delivery','courier_cod_fee','courier_return_fee') "
+        "AND l.entry_date >= ? AND l.entry_date <= ? AND j.order_id IS NOT NULL "
+        "GROUP BY j.order_id",
+        merchant_id, from_date, to_date
+    )
+    fees_by_order = {r['order_id']: int(r['s']) for r in fee_rows}
+
+    # Apportion per-order courier fees across products by line value
+    line_rows = all(
+        "SELECT i.order_id, i.product_id, i.line_total FROM order_items i "
+        "JOIN orders o ON o.id = i.order_id WHERE o.merchant_id = ? AND o.is_duplicate = 0",
+        merchant_id
+    )
+    courier_share: Dict[int, int] = {}
+    fee_orders: Dict[int, List[Dict[str, Any]]] = {}
+    for lr in line_rows:
+        if lr['order_id'] in fees_by_order:
+            fee_orders.setdefault(lr['order_id'], []).append(lr)
+    for order_id, lines in fee_orders.items():
+        total_fee = fees_by_order[order_id]
+        total_val = sum(l['line_total'] for l in lines) or 1
+        allocated = 0
+        for l in lines:
+            share = int(total_fee * l['line_total'] // total_val)
+            courier_share[l['product_id']] = courier_share.get(l['product_id'], 0) + share
+            allocated += share
+        biggest = max(lines, key=lambda l: l['line_total'])
+        courier_share[biggest['product_id']] += total_fee - allocated
+
+    ad_total = all(
+        "SELECT COALESCE(SUM(amount), 0) AS s FROM journal_lines "
+        "WHERE merchant_id = ? AND account = 'ad_spend' AND entry_date >= ? AND entry_date <= ?",
+        merchant_id, from_date, to_date
+    )
+    unattributed_ads = int(ad_total[0]['s']) if ad_total else 0
+
+    items = []
+    for pid, pr in prods.items():
+        placed = len(pr['_orders'])
+        delivered = len(pr['_delivered'])
+        returned = len(pr['_returned'])
+        revenue = revenue_by_pid.get(pid, 0)
+        cogs = cogs_by_pid.get(pid, 0)
+        gross_profit = revenue - cogs
+        courier_cost = courier_share.get(pid, 0)
+        # Ad spend has no product attribution yet — left blank per spec.
+        ad_spend = None
+        net_profit = gross_profit - courier_cost
+        net_margin = (net_profit / revenue) if revenue else None
+        items.append({
+            'product_id': pid,
+            'name': pr['name'],
+            'sku': pr['sku'],
+            'orders_placed': placed,
+            'delivered': delivered,
+            'returned': returned,
+            'delivered_pct': round(delivered / placed, 3) if placed else None,
+            'returned_pct': round(returned / placed, 3) if placed else None,
+            'revenue_poisha': revenue,
+            'cogs_poisha': cogs,
+            'gross_profit_poisha': gross_profit,
+            'ad_spend_poisha': ad_spend,
+            'courier_cost_poisha': courier_cost,
+            'net_profit_poisha': net_profit,
+            'net_margin': round(net_margin, 3) if net_margin is not None else None,
+        })
+
+    items.sort(key=lambda r: r['net_profit_poisha'], reverse=True)
+    return {
+        'from': from_date,
+        'to': to_date,
+        'unattributed_ad_spend_poisha': unattributed_ads,
+        'rows': items,
+    }
+
 
 def drilldown(merchant_id: int, metric: str, from_date: str, to_date: str) -> Dict[str, Any]:
     """Trace every number to underlying double-entry journal rows (Non-negotiable rule 10)."""

@@ -17,6 +17,7 @@ else:
     load_dotenv(override=True)
 
 from app.db.session import open_db
+from app.domain.exceptions import seed_reason_codes
 from app.api.auth import router as auth_router
 from app.api.dashboard import router as dashboard_router
 from app.api.orders import router as orders_router
@@ -26,6 +27,8 @@ from app.api.events import router as events_router
 from app.api.webhooks import router as webhooks_router
 from app.api.admin import router as admin_router
 from app.api.products import router as products_router
+from app.api.exceptions import router as exceptions_router
+from app.api.settlements import router as settlements_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -34,6 +37,7 @@ async def lifespan(app: FastAPI):
     if pg_url:
         print(f"Initializing connection to Supabase PostgreSQL...")
         open_db(pg_url)
+        seed_reason_codes()
     else:
         db_file = os.getenv("DB_FILE")
         if not db_file:
@@ -46,7 +50,8 @@ async def lifespan(app: FastAPI):
                 seed()
             except Exception as e:
                 print(f"Auto-seed warning: {e}")
-            
+        seed_reason_codes()
+
     print(f"Gross Management (FastAPI) active — Engine ready.")
     yield
 
@@ -74,6 +79,8 @@ app.include_router(events_router)
 app.include_router(webhooks_router)
 app.include_router(admin_router)
 app.include_router(products_router)
+app.include_router(exceptions_router)
+app.include_router(settlements_router)
 
 @app.get("/health")
 def health_check():

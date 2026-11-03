@@ -4,13 +4,17 @@ Manages inventory catalog, active/inactive state, versioned purchase cost price,
 and retail selling price.
 """
 from typing import Dict, Any, Optional, List
+import csv
+import io
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from pydantic import BaseModel
 from app.api.auth import get_current_user, require_agency_owner
 from app.domain.products import (
     get_product, find_product, cost_at, stock_qty,
-    upsert_product, set_price
+    upsert_product, set_price, missing_price_products
 )
+from app.domain.reports import product_performance
 from app.lib.money import to_poisha
 from app.lib.dates import now_iso, today
 from app.lib.audit import log_audit
@@ -288,3 +292,175 @@ async def adjust_stock(
     })
 
     return {"ok": True, "product_id": product_id, "stock_qty": new_stock}
+
+
+# =====================================================================================
+# Missing purchase prices + bulk price upload (rule 1: versioned, never overwritten)
+# =====================================================================================
+
+class BulkPriceRow(BaseModel):
+    product_id: int
+    purchase_price: Optional[float] = None
+
+
+class BulkPriceInput(BaseModel):
+    rows: List[BulkPriceRow]
+
+
+@router.get("/missing-prices")
+async def get_missing_prices(current: Dict[str, Any] = Depends(get_current_user)):
+    """
+    GET /api/products/missing-prices
+    → {"count": n, "products": [{"id", "name", "sku"}, ...]}
+    """
+    m_id = current["merchantId"]
+    prods = missing_price_products(m_id)
+    return {
+        "count": len(prods),
+        "products": [{"id": p["id"], "name": p["name"], "sku": p.get("sku") or ""} for p in prods],
+    }
+
+
+@router.get("/missing-prices/download")
+async def download_missing_prices(current: Dict[str, Any] = Depends(get_current_user)):
+    """
+    GET /api/products/missing-prices/download
+    → CSV attachment (missing_prices.csv) with columns id, name, sku, purchase_price
+      (purchase_price left blank for the merchant to fill in and re-upload).
+    """
+    m_id = current["merchantId"]
+    prods = missing_price_products(m_id)
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["id", "name", "sku", "purchase_price"])
+    for p in prods:
+        writer.writerow([p["id"], p["name"], p.get("sku") or "", ""])
+
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="missing_prices.csv"'},
+    )
+
+
+def _validate_bulk_rows(m_id: int, rows: List[BulkPriceRow]):
+    """
+    Validate rows in merchant scope. Returns (valid, skipped):
+      valid:   [{'product_id', 'name', 'old_cost', 'new_cost', 'warnings': []}]
+      skipped: [{'product_id', 'reason'}]
+    """
+    valid = []
+    skipped = []
+    for r in rows:
+        try:
+            p = get_product(m_id, r.product_id)
+        except ValueError:
+            skipped.append({"product_id": r.product_id, "reason": "product not found"})
+            continue
+        if r.purchase_price is None:
+            skipped.append({"product_id": r.product_id, "reason": "purchase_price missing"})
+            continue
+        try:
+            poisha = to_poisha(r.purchase_price)
+        except ValueError as err:
+            skipped.append({"product_id": r.product_id, "reason": f"unreadable price: {err}"})
+            continue
+        if poisha < 0:
+            skipped.append({"product_id": r.product_id, "reason": "purchase price cannot be negative"})
+            continue
+        c = cost_at(r.product_id, today())
+        warnings = []
+        if not c:
+            warnings.append("product has no price yet — new record created")
+        valid.append({
+            "product_id": r.product_id,
+            "name": p["name"],
+            "old_cost": c["purchase_price"] if c else None,
+            "new_cost": poisha,
+            "warnings": warnings,
+        })
+    return valid, skipped
+
+
+@router.post("/prices/bulk-preview")
+async def bulk_price_preview(data: BulkPriceInput, current: Dict[str, Any] = Depends(get_current_user)):
+    """
+    POST /api/products/prices/bulk-preview
+    Body: {"rows": [{"product_id": 3, "purchase_price": 350.00}, ...]}   // taka
+    → {"valid": [{"product_id", "name", "old_cost", "new_cost", "warnings": [...]}],
+       "skipped": [{"product_id", "reason"}]}
+    Writes nothing.
+    """
+    m_id = current["merchantId"]
+    valid, skipped = _validate_bulk_rows(m_id, data.rows)
+    return {"valid": valid, "skipped": skipped}
+
+
+@router.post("/prices/bulk-commit")
+async def bulk_price_commit(data: BulkPriceInput, current: Dict[str, Any] = Depends(get_current_user)):
+    """
+    POST /api/products/prices/bulk-commit
+    Body: same rows shape as bulk-preview.
+    Each valid row creates a NEW product_price_history record effective today
+    (never overwritten; historical profit does not move). Source: 'bulk_upload'.
+    → {"ok": true, "applied": n,
+       "skipped": [{"product_id", "reason"}],
+       "records": [{"product_id", "price_record_id", "effective_from"}]}
+    """
+    m_id = current["merchantId"]
+    actor = current["actor"]
+    valid, skipped = _validate_bulk_rows(m_id, data.rows)
+
+    applied = []
+    with tx():
+        for row in valid:
+            result = set_price(m_id, row["product_id"], row["new_cost"], {
+                "source": "bulk_upload",
+                "actor": actor,
+                "effective_from": today(),
+                "note": "Bulk purchase price upload",
+            })
+            applied.append({
+                "product_id": row["product_id"],
+                "price_record_id": result["id"],
+                "effective_from": result["effective_from"],
+            })
+
+    log_audit(
+        merchant_id=m_id,
+        action="bulk_price_commit",
+        actor=actor,
+        entity="product_price_history",
+        entity_id=None,
+        details={"rows_applied": len(applied), "rows_skipped": len(skipped)},
+    )
+    event_bus.publish({
+        "type": "inventory_updated",
+        "merchantId": m_id,
+        "action": "bulk_price_commit",
+        "rows": len(applied),
+    })
+
+    return {"ok": True, "applied": len(applied), "skipped": skipped, "records": applied}
+
+
+@router.get("/performance")
+async def get_product_performance(
+    from_date: Optional[str] = Query(None, alias="from"),
+    to_date: Optional[str] = Query(None, alias="to"),
+    current: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    GET /api/products/performance?from=YYYY-MM-DD&to=YYYY-MM-DD
+    → {"from", "to", "unattributed_ad_spend_poisha",
+       "rows": [{"product_id", "name", "sku", "orders_placed", "delivered", "returned",
+                 "delivered_pct", "returned_pct", "revenue_poisha", "cogs_poisha",
+                 "gross_profit_poisha", "ad_spend_poisha" (null — no campaign mapping),
+                 "courier_cost_poisha", "net_profit_poisha", "net_margin"}, ...]}
+    Sorted net_profit DESC.
+    """
+    m_id = current["merchantId"]
+    f = from_date or today()[:8] + "01"
+    t = to_date or today()
+    return product_performance(m_id, f, t)

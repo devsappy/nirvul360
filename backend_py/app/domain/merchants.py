@@ -8,6 +8,7 @@ import json
 from typing import Dict, Any, List, Optional
 from app.db.session import insert, update, one, all, tx, run
 from app.lib.dates import now_iso
+from app.lib.money import to_poisha
 from app.domain.roles import ROLES
 
 DEFAULT_INTEGRATIONS = {
@@ -44,7 +45,7 @@ DEFAULT_INTEGRATIONS = {
 DEFAULT_SETTINGS = {
     'stuck_parcel_threshold_days': 5,
     'unsettled_cod_window_days': 10,
-    'duplicate_window_hours': 24,
+    'duplicate_window_hours': 72,
     'daily_summary': {'enabled': True, 'time': '21:00'},
     'integrations': DEFAULT_INTEGRATIONS,
 }
@@ -112,6 +113,12 @@ def create_user(merchant_id: int, data: Dict[str, Any]) -> int:
     })
 
 def create_cash_account(merchant_id: int, data: Dict[str, Any], actor: str = 'system') -> int:
+    # Callers use both spellings: seed.py/admin.py pass opening_balance, the API
+    # passes openingBalance. Accept both so the opening posting is never dropped.
+    opening = data.get('openingBalance') if data.get('openingBalance') is not None else data.get('opening_balance')
+    opening = opening if isinstance(opening, int) and opening != 0 else (to_poisha(opening) if opening else 0)
+    opening_date = data.get('opening_date') or data.get('openingDate') or now_iso()[:10]
+
     acct_id = insert('cash_accounts', {
         'merchant_id': merchant_id,
         'name': data['name'],
@@ -119,18 +126,18 @@ def create_cash_account(merchant_id: int, data: Dict[str, Any], actor: str = 'sy
         'is_default': bool(data.get('isDefault', False)),
         'created_at': now_iso(),
     })
-    if data.get('openingBalance'):
+    if opening:
         from app.domain.ledger import post
         post({
             'merchant_id': merchant_id,
-            'date': data.get('openingDate') or now_iso()[:10],
+            'date': opening_date,
             'kind': 'opening_balance',
             'memo': f"Opening balance: {data['name']}",
             'source': 'manual',
             'created_by': actor,
         }, [
-            {'account': 'cash', 'party': str(acct_id), 'amount': data['openingBalance']},
-            {'account': 'opening_equity', 'party': None, 'amount': -data['openingBalance']},
+            {'account': 'cash', 'party': str(acct_id), 'amount': opening},
+            {'account': 'opening_equity', 'party': None, 'amount': -opening},
         ])
     return acct_id
 

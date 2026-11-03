@@ -126,7 +126,53 @@ def create_order(merchant_id: int, data: Dict[str, Any], ctx: Dict[str, Any]) ->
                 'charges': data.get('charges')
             })
 
+        # 3. Duplicate detection (same phone + same items + same amount inside the
+        #    duplicate window): the order is kept but flagged, and the queue asks.
+        if data.get('customer_phone'):
+            _flag_if_duplicate(merchant_id, order_id, source, actor)
+
         return order_id
+
+
+def _duplicate_signature(items: List[Dict[str, Any]]) -> List[tuple]:
+    return sorted((i['product_id'], i['qty']) for i in items)
+
+
+def _flag_if_duplicate(merchant_id: int, order_id: int, source: str, actor: str) -> bool:
+    from app.domain.merchants import get_settings
+    from datetime import datetime, timezone, timedelta
+
+    order = one("SELECT * FROM orders WHERE id = ?", order_id)
+    if not order or order.get('is_duplicate'):
+        return False
+    window = get_settings(merchant_id).get('duplicate_window_hours', 72)
+    now = datetime.now(timezone.utc)
+    cutoff = (now - timedelta(hours=window)).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+    candidates = all(
+        "SELECT id, total, status FROM orders WHERE merchant_id = ? AND customer_phone = ? "
+        "AND total = ? AND id != ? AND status != 'cancelled' AND is_duplicate = 0 AND placed_at >= ?",
+        merchant_id, order['customer_phone'], order['total'], order_id, cutoff
+    )
+    signature = _duplicate_signature(order_items(order_id))
+    for c in candidates:
+        other = _duplicate_signature(all(
+            "SELECT product_id, qty FROM order_items WHERE order_id = ?", c['id']
+        ))
+        if other == signature:
+            update('orders', order_id, {'is_duplicate': 1})
+            raise_exception(merchant_id, {
+                'type': 'duplicate_order',
+                'key': f"dup:{order_id}",
+                'value': order['total'],
+                'order_id': order_id,
+                'details': {
+                    'previous_order_id': c['id'],
+                    'customer_phone': order['customer_phone'],
+                    'window_hours': window,
+                },
+            }, actor)
+            return True
+    return False
 
 def apply_status(merchant_id: int, order_id: int, new_status: str, ctx: Dict[str, Any]) -> Dict[str, Any]:
     if new_status not in STATUSES:
@@ -266,7 +312,7 @@ def _post_delivery(merchant_id: int, order: Dict[str, Any], source: str, actor: 
         ])
         update('orders', order['id'], {'posting_state': 'held'})
         for m in missing:
-            flag_missing_cost(merchant_id, m['product_id'], actor)
+            flag_missing_cost(merchant_id, m['product_id'], actor, order_id=order['id'])
         return 'held'
 
     cogs_lines = []

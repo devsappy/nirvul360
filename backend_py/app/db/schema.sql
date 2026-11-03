@@ -244,6 +244,15 @@ CREATE TABLE reason_codes (
   PRIMARY KEY (exception_type, code)
 );
 
+-- Seed (idempotent; the app also re-seeds at startup in case the DB predates it).
+INSERT OR IGNORE INTO reason_codes (code, exception_type, label, effect, closes) VALUES
+  ('partial_delivery', 'short_settlement', 'আংশিক ডেলিভারি',
+   'Revenue reduced by the shortfall, refused goods go back into inventory (stock return entry), courier charges stay as booked.', 1),
+  ('delivery_discount', 'short_settlement', 'ডেলিভারিতে ছাড়',
+   'Revenue reduced by the shortfall booked as a door discount. Full stock consumed, nothing returned.', 1),
+  ('courier_short', 'short_settlement', 'কুরিয়ার কম দিয়েছে',
+   'Revenue unchanged. The difference posts as a firm receivable from the courier to be recovered.', 1);
+
 -- Non-negotiable rule 2: whatever does not reconcile lands here and stays out of profit.
 CREATE TABLE exception_queue (
   id               INTEGER PRIMARY KEY,
@@ -265,7 +274,7 @@ CREATE TABLE exception_queue (
   resolved_at      TEXT,
   resolved_by      TEXT
 );
-CREATE UNIQUE INDEX exception_open_once ON exception_queue(merchant_id, dedupe_key) WHERE status = 'open';
+CREATE UNIQUE INDEX exception_open_once ON exception_queue(merchant_id, type, dedupe_key) WHERE status = 'open';
 CREATE INDEX exception_status ON exception_queue(merchant_id, status, type);
 
 CREATE TABLE uploads (

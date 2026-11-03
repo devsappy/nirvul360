@@ -57,11 +57,13 @@ async def list_tenants(current: Dict[str, Any] = Depends(require_admin)):
             FROM orders WHERE merchant_id = ?
         """, m_id) or {"total_orders": 0, "total_gmv": 0, "delivered_gmv": 0, "delivered_count": 0, "returned_count": 0, "in_transit_count": 0}
 
-        # Cash summary from journal lines
+        # Cash summary from the ledger: cash account balances live in the
+        # journal_lines account 'cash' (parties = cash_accounts rows). The old query
+        # summed accounts that never existed in the chart.
         cash_stat = one("""
             SELECT COALESCE(SUM(amount), 0) as total_cash
             FROM journal_lines
-            WHERE merchant_id = ? AND account IN ('cash_in_bank', 'cash_on_delivery', 'bkash_wallet', 'nagad_wallet')
+            WHERE merchant_id = ? AND account = 'cash'
         """, m_id) or {"total_cash": 0}
         
         # Integrations

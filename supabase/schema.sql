@@ -195,10 +195,14 @@ CREATE TABLE IF NOT EXISTS journals (
   orig_currency        TEXT,
   fx_rate              TEXT,
   fx_rate_date         TEXT,
-  reverses_journal_id  BIGINT REFERENCES journals(id)
+  reverses_journal_id  BIGINT REFERENCES journals(id),
+  -- FX all-or-nothing (mirrors the SQLite schema): all three FX fields present or all absent
+  CHECK ((orig_currency IS NULL) = (fx_rate IS NULL) AND (fx_rate IS NULL) = (fx_rate_date IS NULL))
 );
 CREATE INDEX IF NOT EXISTS idx_journals_date ON journals(merchant_id, entry_date);
 CREATE INDEX IF NOT EXISTS idx_journals_order ON journals(order_id);
+-- One reversal per journal, ever
+CREATE UNIQUE INDEX IF NOT EXISTS journals_one_reversal ON journals(reverses_journal_id) WHERE reverses_journal_id IS NOT NULL;
 
 CREATE TRIGGER journals_no_mutation
 BEFORE UPDATE OR DELETE ON journals
@@ -244,6 +248,16 @@ CREATE TABLE IF NOT EXISTS reason_codes (
   PRIMARY KEY (exception_type, code)
 );
 
+-- Seed (idempotent; the app also re-seeds at startup in case the DB predates it).
+INSERT INTO reason_codes (code, exception_type, label, effect, closes) VALUES
+  ('partial_delivery', 'short_settlement', 'আংশিক ডেলিভারি',
+   'Revenue reduced by the shortfall, refused goods go back into inventory (stock return entry), courier charges stay as booked.', TRUE),
+  ('delivery_discount', 'short_settlement', 'ডেলিভারিতে ছাড়',
+   'Revenue reduced by the shortfall booked as a door discount. Full stock consumed, nothing returned.', TRUE),
+  ('courier_short', 'short_settlement', 'কুরিয়ার কম দিয়েছে',
+   'Revenue unchanged. The difference posts as a firm receivable from the courier to be recovered.', TRUE)
+ON CONFLICT (exception_type, code) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS exception_queue (
   id                BIGSERIAL PRIMARY KEY,
   merchant_id       BIGINT NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
@@ -265,6 +279,8 @@ CREATE TABLE IF NOT EXISTS exception_queue (
   resolved_by       TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_exception_status ON exception_queue(merchant_id, status, type);
+-- Only one OPEN exception per dedupe key (mirrors the SQLite schema)
+CREATE UNIQUE INDEX IF NOT EXISTS exception_open_once ON exception_queue(merchant_id, type, dedupe_key) WHERE status = 'open';
 
 CREATE TABLE IF NOT EXISTS uploads (
   id                  BIGSERIAL PRIMARY KEY,
@@ -307,6 +323,9 @@ CREATE TABLE IF NOT EXISTS settlement_rows (
   outcome_detail   TEXT,
   dedupe_key       TEXT
 );
+-- A consignment may only be paid once per sheet outcome (mirrors the SQLite schema)
+CREATE UNIQUE INDEX IF NOT EXISTS settlement_once ON settlement_rows(merchant_id, dedupe_key)
+  WHERE outcome IN ('posted','exception','unmatched');
 
 CREATE TABLE IF NOT EXISTS audit_log (
   id           BIGSERIAL PRIMARY KEY,
@@ -333,9 +352,11 @@ CREATE TABLE IF NOT EXISTS whatsapp_messages (
   body          TEXT,
   delivery      TEXT NOT NULL,
   error         TEXT,
-  wa_message_id TEXT UNIQUE,
+  wa_message_id TEXT,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+-- Never accept the same inbound WhatsApp webhook twice (mirrors the SQLite schema)
+CREATE UNIQUE INDEX IF NOT EXISTS wa_inbound_once ON whatsapp_messages(wa_message_id) WHERE wa_message_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS whatsapp_drafts (
   id           BIGSERIAL PRIMARY KEY,

@@ -32,10 +32,20 @@ def has_any_price(product_id: int) -> bool:
     return bool(one("SELECT 1 FROM product_price_history WHERE product_id = ? LIMIT 1", product_id))
 
 def cost_at(product_id: int, date: str) -> Optional[Dict[str, Any]]:
-    """The price record in effect on `date` — the latest effective_from on or before it."""
-    return one(
+    """The price record in effect on `date` — the latest effective_from on or before it.
+
+    For dates before the product's first price record, that first stated price
+    applies (the merchant's opening cost is assumed to have always been in effect).
+    """
+    rec = one(
         "SELECT * FROM product_price_history WHERE product_id = ? AND effective_from <= ? ORDER BY effective_from DESC, id DESC LIMIT 1",
         product_id, date
+    )
+    if rec:
+        return rec
+    return one(
+        "SELECT * FROM product_price_history WHERE product_id = ? ORDER BY effective_from ASC, id ASC LIMIT 1",
+        product_id
     )
 
 def price_history(product_id: int) -> List[Dict[str, Any]]:
@@ -129,7 +139,7 @@ def set_price(merchant_id: int, product_id: int, price: int, ctx: Dict[str, Any]
             'created_at': now_iso(),
         })
 
-        auto_clear(merchant_id, 'missing_cost', str(product_id), actor, 'purchase price entered')
+        auto_clear(merchant_id, 'product_without_price', str(product_id), actor, 'purchase price entered')
         
         # Release any deliveries held waiting for this cost
         from app.domain.orders import release_held_deliveries
@@ -137,15 +147,26 @@ def set_price(merchant_id: int, product_id: int, price: int, ctx: Dict[str, Any]
 
         return {'id': record_id, 'effective_from': eff}
 
-def flag_missing_cost(merchant_id: int, product_id: int, actor: str = 'system'):
+def flag_missing_cost(merchant_id: int, product_id: int, actor: str = 'system', order_id: Optional[int] = None):
     p = get_product(merchant_id, product_id)
-    return raise_exception(merchant_id, {
-        'type': 'missing_cost',
+    exc_id = raise_exception(merchant_id, {
+        # 'product_without_price' is the queue-facing name (the older plumbing said
+        # 'missing_cost'; both resolve through the same actions).
+        'type': 'product_without_price',
         'key': str(product_id),
         'value': 0,
         'product_id': product_id,
+        'order_id': order_id,
         'details': {'name': p['name'], 'sku': p.get('sku')}
     }, actor)
+    if order_id:
+        # The exception may have been raised earlier without order context (product
+        # creation); attach this order so the resolution can date the price from
+        # the affected delivery instead of today.
+        row = one("SELECT order_id FROM exception_queue WHERE id = ?", exc_id)
+        if row and not row.get('order_id'):
+            update('exception_queue', exc_id, {'order_id': order_id})
+    return exc_id
 
 def missing_price_products(merchant_id: int) -> List[Dict[str, Any]]:
     rows = all(

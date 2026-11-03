@@ -123,7 +123,8 @@ def set_price(merchant_id: int, product_id: int, price: int, ctx: Dict[str, Any]
                 product_id
             )
             earliest = earliest_row['d'] if earliest_row else None
-            candidates = [c for c in [eff, p['created_at'][:10], earliest] if c]
+            p_created = str(p['created_at'])[:10] if p.get('created_at') else None
+            candidates = [c for c in [eff, p_created, earliest] if c]
             eff = min(candidates)
 
         record_id = insert('product_price_history', {

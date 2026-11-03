@@ -11,7 +11,7 @@ from app.domain.merchants import verify_password, get_merchant
 from app.domain.roles import (
     role_rank, ROLE_LABELS, is_super_admin, is_admin_or_super,
     can_connect_integrations, can_add_misc_expense, can_add_product_expense,
-    can_use_whatsapp_expense, can_manage_user_with_role
+    can_use_whatsapp_expense, can_manage_user_with_role, can_pause_product
 )
 from app.lib.dates import now_iso, today
 
@@ -38,6 +38,18 @@ def get_current_user(request: Request) -> Dict[str, Any]:
         raise HTTPException(status_code=401, detail="user not found")
 
     merchant_id = s.get('active_merchant_id') if (user['role'] in ('super_admin', 'admin') and s.get('active_merchant_id')) else user['merchant_id']
+
+    # Lockout check: If merchant is paused, non-admin users are blocked from operational APIs
+    path = request.url.path
+    exempt_paths = ('/api/me', '/api/auth/logout')
+    if user['role'] not in ('super_admin', 'admin') and path not in exempt_paths:
+        merchant = one("SELECT status, paused_reason FROM merchants WHERE id = ?", merchant_id)
+        if merchant and merchant.get('status') == 'paused':
+            reason = merchant.get('paused_reason') or 'Subscription payment overdue'
+            raise HTTPException(
+                status_code=403,
+                detail=f"Account paused: {reason}. Please contact Gross Management Super Admin to settle overdue payment."
+            )
 
     return {
         "user": user,
@@ -160,6 +172,8 @@ async def me(current: Dict[str, Any] = Depends(get_current_user)):
         "merchant": {
             "id": m['id'],
             "name": m['name'],
+            "status": m.get('status') or 'active',
+            "paused_reason": m.get('paused_reason'),
         },
         "today": today(),
         "meta": {
@@ -173,6 +187,7 @@ async def me(current: Dict[str, Any] = Depends(get_current_user)):
                 "can_add_misc_expense": can_add_misc_expense(role),
                 "can_add_product_expense": can_add_product_expense(role),
                 "can_use_whatsapp_expense": can_use_whatsapp_expense(role),
+                "can_pause_product": can_pause_product(role),
                 "is_admin_or_super": is_admin_or_super(role),
                 "is_super_admin": is_super_admin(role),
             }

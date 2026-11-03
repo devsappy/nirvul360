@@ -58,6 +58,10 @@ def can_use_whatsapp_expense(role: str) -> bool:
     """Accountants and above CAN record expenses via WhatsApp."""
     return role_rank(role) >= 1
 
+def can_pause_product(role: str) -> bool:
+    """Super Admin, Admin, and Agency Owner CAN pause products. Accountants cannot."""
+    return role_rank(role) >= 2
+
 def can_manage_user_with_role(actor_role: str, target_role: str) -> bool:
     """A user can only invite/manage roles with lower rank."""
     return role_rank(actor_role) > role_rank(target_role)

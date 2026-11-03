@@ -12,6 +12,8 @@ CREATE TABLE merchants (
   name         TEXT NOT NULL,
   api_key      TEXT NOT NULL UNIQUE,
   settings     TEXT NOT NULL DEFAULT '{}',
+  status       TEXT NOT NULL DEFAULT 'active',
+  paused_reason TEXT,
   created_at   TEXT NOT NULL
 );
 

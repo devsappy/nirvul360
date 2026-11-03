@@ -83,3 +83,66 @@ def test_admin_flow_and_tenant_switching():
     orders = orders_data['rows']
     assert len(orders) == 1
     assert orders[0]['external_id'] == 'ORD-BETA-01'
+
+def test_admin_pause_and_resume_tenant():
+    m_id = create_merchant({'name': 'Payment Overdue Store', 'phone': '01900000003'})
+    create_user(m_id, {
+        'name': 'Tenant Agency Owner',
+        'email': 'overdue_owner@test.bd',
+        'role': 'agency_owner',
+        'password': 'password123'
+    })
+    create_user(m_id, {
+        'name': 'System Super Admin',
+        'email': 'super_pause@gross.bd',
+        'role': 'super_admin',
+        'password': 'password123'
+    })
+
+    # 1. Login as Super Admin and pause Tenant
+    client.post("/api/auth/login", json={'email': 'super_pause@gross.bd', 'password': 'password123'})
+    pause_res = client.post(f"/api/admin/tenants/{m_id}/pause", json={'reason': 'Subscription invoice #1042 overdue'})
+    assert pause_res.status_code == 200
+    assert pause_res.json()['status'] == 'paused'
+    assert '1042 overdue' in pause_res.json()['paused_reason']
+
+    # 2. Verify /api/admin/tenants lists it as paused
+    tenants_res = client.get("/api/admin/tenants")
+    target = next(t for t in tenants_res.json()['tenants'] if t['id'] == m_id)
+    assert target['status'] == 'paused'
+    assert target['paused_reason'] == 'Subscription invoice #1042 overdue'
+
+    # 3. Super Admin inspecting paused tenant CAN still access
+    switch_res = client.post("/api/admin/switch-tenant", json={'merchant_id': m_id})
+    assert switch_res.status_code == 200
+    dash_res = client.get("/api/dashboard")
+    assert dash_res.status_code == 200
+
+    # 4. Now logout and login as the Tenant Agency Owner
+    client.post("/api/auth/logout")
+    login_owner = client.post("/api/auth/login", json={'email': 'overdue_owner@test.bd', 'password': 'password123'})
+    assert login_owner.status_code == 200
+
+    # /api/me should succeed so frontend knows account is paused
+    me_res = client.get("/api/me")
+    assert me_res.status_code == 200
+    assert me_res.json()['merchant']['status'] == 'paused'
+    assert me_res.json()['merchant']['paused_reason'] == 'Subscription invoice #1042 overdue'
+
+    # Operational routes must return 403 Forbidden
+    orders_res = client.get("/api/orders")
+    assert orders_res.status_code == 403
+    assert "Account paused" in orders_res.json()['detail']
+
+    # 5. Login back as Super Admin and resume the tenant
+    client.post("/api/auth/logout")
+    client.post("/api/auth/login", json={'email': 'super_pause@gross.bd', 'password': 'password123'})
+    resume_res = client.post(f"/api/admin/tenants/{m_id}/resume")
+    assert resume_res.status_code == 200
+    assert resume_res.json()['status'] == 'active'
+
+    # 6. Tenant Owner can now access orders normally
+    client.post("/api/auth/logout")
+    client.post("/api/auth/login", json={'email': 'overdue_owner@test.bd', 'password': 'password123'})
+    orders_res2 = client.get("/api/orders")
+    assert orders_res2.status_code == 200

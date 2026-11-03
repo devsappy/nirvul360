@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import BaseModel
 from app.api.auth import get_current_user, require_agency_owner
+from app.domain.roles import can_pause_product
 from app.domain.products import (
     get_product, find_product, cost_at, stock_qty,
     upsert_product, set_price, missing_price_products
@@ -44,6 +45,17 @@ class UpdatePriceInput(BaseModel):
 class AdjustStockInput(BaseModel):
     qty: int
     reason: Optional[str] = "adjustment"
+
+class BulkProductRow(BaseModel):
+    sku: Optional[str] = None
+    name: str
+    selling_price: Optional[float] = None
+    cost_price: Optional[float] = None
+    stock_qty: Optional[int] = 0
+    active: Optional[bool] = True
+
+class BulkProductsInput(BaseModel):
+    products: List[BulkProductRow]
 
 @router.get("")
 async def list_products(
@@ -168,9 +180,17 @@ async def toggle_product_status(
 ):
     """
     Toggle or update active / inactive state of an inventory item.
+    Permitted for Super Admin, Admin, and Agency Owner. Accountants are denied.
     """
     m_id = current["merchantId"]
     actor = current["actor"]
+    user_role = current["user"].get("role", "")
+
+    if not can_pause_product(user_role):
+        raise HTTPException(
+            status_code=403,
+            detail="Permission denied: Accountants are not authorized to pause or change product status. Only Agency Owners and Admins can perform this action."
+        )
 
     p = get_product(m_id, product_id)
     update("products", product_id, {
@@ -178,7 +198,7 @@ async def toggle_product_status(
         "updated_at": now_iso()
     })
 
-    status_label = "active" if data.active else "inactive"
+    status_label = "active" if data.active else "paused"
     log_audit(
         merchant_id=m_id,
         action="product_status_changed",
@@ -292,6 +312,142 @@ async def adjust_stock(
     })
 
     return {"ok": True, "product_id": product_id, "stock_qty": new_stock}
+
+@router.get("/bulk/template")
+async def download_bulk_template():
+    """
+    GET /api/products/bulk/template
+    Download standard CSV template for inventory product catalog bulk upload.
+    """
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["sku", "name", "selling_price", "cost_price", "stock_qty", "active"])
+    writer.writerow(["TS-101", "Classic Cotton T-Shirt", "650", "280", "50", "yes"])
+    writer.writerow(["HD-201", "Fleece Winter Hoodie", "1650", "750", "30", "yes"])
+    writer.writerow(["PJ-301", "Traditional Silk Panjabi", "2200", "1100", "20", "yes"])
+
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="inventory_template.csv"'},
+    )
+
+@router.post("/bulk")
+async def bulk_upload_products(
+    data: BulkProductsInput,
+    current: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    POST /api/products/bulk
+    Bulk imports or updates inventory items.
+    Permitted for Super Admin, Admin, and Agency Owner.
+    Matches by SKU or Name.
+    """
+    m_id = current["merchantId"]
+    actor = current["actor"]
+    user_role = current["user"].get("role", "")
+
+    if not can_pause_product(user_role):
+        raise HTTPException(
+            status_code=403,
+            detail="Permission denied: Accountants are not authorized to bulk import products. Agency Owner or Admin access required."
+        )
+
+    if not data.products:
+        raise HTTPException(status_code=400, detail="No products provided in upload payload")
+
+    created_count = 0
+    updated_count = 0
+    errors = []
+
+    with tx():
+        for idx, item in enumerate(data.products):
+            name = (item.name or "").strip()
+            if not name:
+                errors.append(f"Row {idx + 1}: Name is required")
+                continue
+
+            sku = (item.sku or "").strip() if item.sku else None
+            sell_poisha = to_poisha(item.selling_price) if item.selling_price is not None else None
+            cost_poisha = to_poisha(item.cost_price) if item.cost_price is not None else None
+
+            # Check if exists by SKU or Name
+            existing = None
+            if sku:
+                existing = one("SELECT * FROM products WHERE merchant_id = ? AND lower(sku) = ?", m_id, sku.lower())
+            if not existing:
+                existing = one("SELECT * FROM products WHERE merchant_id = ? AND lower(name) = ?", m_id, name.lower())
+
+            if existing:
+                p_id = existing["id"]
+                update_fields = {"name": name}
+                if sku:
+                    update_fields["sku"] = sku
+                if sell_poisha is not None:
+                    update_fields["selling_price"] = sell_poisha
+                if item.active is not None:
+                    update_fields["active"] = bool(item.active)
+                update_fields["updated_at"] = now_iso()
+                update("products", p_id, update_fields)
+
+                if cost_poisha is not None:
+                    set_price(m_id, p_id, cost_poisha, {
+                        "source": "bulk_upload",
+                        "actor": actor,
+                        "effective_from": today(),
+                        "note": "Bulk inventory upload"
+                    })
+
+                if item.stock_qty and item.stock_qty != 0:
+                    current_stock = stock_qty(p_id)
+                    delta = item.stock_qty - current_stock
+                    if delta != 0:
+                        insert("stock_movements", {
+                            "merchant_id": m_id,
+                            "product_id": p_id,
+                            "qty": delta,
+                            "reason": "bulk_upload_adjustment",
+                            "movement_date": today(),
+                            "source": "bulk_upload",
+                            "created_by": actor,
+                            "created_at": now_iso()
+                        })
+                updated_count += 1
+            else:
+                p_id = upsert_product(m_id, {
+                    "name": name,
+                    "sku": sku,
+                    "selling_price": sell_poisha,
+                    "purchase_price": cost_poisha,
+                    "stock_qty": item.stock_qty or 0,
+                    "active": item.active if item.active is not None else True,
+                }, {"source": "bulk_upload", "actor": actor})
+                created_count += 1
+
+    log_audit(
+        merchant_id=m_id,
+        action="inventory_bulk_uploaded",
+        actor=actor,
+        entity="products",
+        entity_id=None,
+        details={"created": created_count, "updated": updated_count, "total": len(data.products)}
+    )
+
+    event_bus.publish({
+        "type": "inventory_updated",
+        "merchantId": m_id,
+        "action": "bulk_upload",
+        "count": len(data.products)
+    })
+
+    return {
+        "ok": True,
+        "created": created_count,
+        "updated": updated_count,
+        "total": len(data.products),
+        "errors": errors,
+        "message": f"Bulk import processed {len(data.products)} items ({created_count} added, {updated_count} updated)."
+    }
 
 
 # =====================================================================================

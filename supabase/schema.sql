@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS merchants (
   name         TEXT NOT NULL,
   api_key      TEXT NOT NULL UNIQUE,
   settings     JSONB NOT NULL DEFAULT '{}'::jsonb,
+  status       TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'paused')),
+  paused_reason TEXT,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

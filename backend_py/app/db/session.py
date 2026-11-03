@@ -16,10 +16,16 @@ from typing import Dict, Any, List, Optional
 from dotenv import load_dotenv
 
 # Auto-load .env from project root if present
-_root_dir = Path(__file__).resolve().parent.parent.parent
-_env_file = _root_dir / ".env"
-if _env_file.exists():
-    load_dotenv(dotenv_path=_env_file, override=False)
+_here = Path(__file__).resolve().parent
+_candidates = [
+    _here.parent.parent.parent / ".env", # project root
+    _here.parent.parent / ".env",        # backend_py
+    Path.cwd() / ".env"
+]
+for _env_file in _candidates:
+    if _env_file.exists():
+        load_dotenv(dotenv_path=_env_file, override=False)
+        break
 
 _is_postgres: bool = False
 _db_conn = None
@@ -78,7 +84,7 @@ def open_db(target: Optional[str] = None):
             from psycopg2.extras import RealDictCursor
             
             _db_conn = psycopg2.connect(conn_str, cursor_factory=RealDictCursor)
-            _db_conn.autocommit = False
+            _db_conn.autocommit = True
             _is_postgres = True
             print(f"Connected to Supabase PostgreSQL successfully.")
 
@@ -91,7 +97,7 @@ def open_db(target: Optional[str] = None):
                     schema_sql = _get_schema_sql(is_pg=True)
                     if schema_sql:
                         cur.execute(schema_sql)
-                        _db_conn.commit()
+                        print("Supabase schema initialized cleanly.")
                         print("Supabase schema initialized cleanly.")
             
             _tx_depth = 0
@@ -280,6 +286,8 @@ def tx():
     name = f"sp{_tx_depth}"
     
     if _is_postgres:
+        if _tx_depth == 0:
+            conn.autocommit = False
         with conn.cursor() as cur:
             if _tx_depth > 0:
                 cur.execute(f"SAVEPOINT {name}")
@@ -289,12 +297,14 @@ def tx():
                 _tx_depth -= 1
                 if _tx_depth == 0:
                     conn.commit()
+                    conn.autocommit = True
                 else:
                     cur.execute(f"RELEASE SAVEPOINT {name}")
             except Exception:
                 _tx_depth -= 1
                 if _tx_depth == 0:
                     conn.rollback()
+                    conn.autocommit = True
                 else:
                     cur.execute(f"ROLLBACK TO SAVEPOINT {name}")
                 raise

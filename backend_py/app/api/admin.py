@@ -29,6 +29,9 @@ class CreateTenantInput(BaseModel):
     owner_whatsapp: Optional[str] = None
     currency: Optional[str] = "BDT"
 
+class PauseTenantInput(BaseModel):
+    reason: Optional[str] = "Subscription payment overdue"
+
 @router.get("/tenants")
 async def list_tenants(current: Dict[str, Any] = Depends(require_admin)):
     """
@@ -81,6 +84,8 @@ async def list_tenants(current: Dict[str, Any] = Depends(require_admin)):
         tenant_list.append({
             "id": m_id,
             "name": m["name"],
+            "status": m.get("status") or "active",
+            "paused_reason": m.get("paused_reason"),
             "created_at": m["created_at"],
             "is_active_selection": (m_id == active_m_id),
             "owner": {
@@ -289,4 +294,68 @@ async def create_new_tenant(data: CreateTenantInput, current: Dict[str, Any] = D
         "ok": True,
         "merchant": {"id": m_id, "name": data.name},
         "owner": {"id": owner_id, "name": data.owner_name, "email": data.owner_email}
+    }
+
+@router.post("/tenants/{tenant_id}/pause")
+async def pause_tenant(
+    tenant_id: int, 
+    data: Optional[PauseTenantInput] = None, 
+    current: Dict[str, Any] = Depends(require_admin)
+):
+    """
+    Pause/Suspend a tenant merchant account (e.g. overdue subscription payment).
+    Tenant staff users will be locked out until resumed.
+    """
+    merchant = one("SELECT * FROM merchants WHERE id = ?", tenant_id)
+    if not merchant:
+        raise HTTPException(status_code=404, detail="Merchant not found")
+
+    reason = (data.reason.strip() if (data and data.reason) else None) or "Subscription payment overdue"
+    run("UPDATE merchants SET status = 'paused', paused_reason = ? WHERE id = ?", reason, tenant_id)
+
+    log_audit(
+        merchant_id=tenant_id,
+        action="tenant_paused",
+        actor=f"user:{current['user']['id']}",
+        entity="merchants",
+        entity_id=str(tenant_id),
+        details={"reason": reason, "merchant_name": merchant["name"]}
+    )
+
+    return {
+        "ok": True,
+        "tenant_id": tenant_id,
+        "status": "paused",
+        "paused_reason": reason,
+        "message": f"Tenant '{merchant['name']}' paused successfully ({reason}). Staff access is now locked."
+    }
+
+@router.post("/tenants/{tenant_id}/resume")
+async def resume_tenant(
+    tenant_id: int, 
+    current: Dict[str, Any] = Depends(require_admin)
+):
+    """
+    Resume/Reactivate a paused tenant merchant account.
+    """
+    merchant = one("SELECT * FROM merchants WHERE id = ?", tenant_id)
+    if not merchant:
+        raise HTTPException(status_code=404, detail="Merchant not found")
+
+    run("UPDATE merchants SET status = 'active', paused_reason = NULL WHERE id = ?", tenant_id)
+
+    log_audit(
+        merchant_id=tenant_id,
+        action="tenant_resumed",
+        actor=f"user:{current['user']['id']}",
+        entity="merchants",
+        entity_id=str(tenant_id),
+        details={"merchant_name": merchant["name"]}
+    )
+
+    return {
+        "ok": True,
+        "tenant_id": tenant_id,
+        "status": "active",
+        "message": f"Tenant '{merchant['name']}' resumed successfully. Staff access has been restored."
     }

@@ -301,9 +301,16 @@ def record_supplier_payment(merchant_id: int, data: Dict[str, Any], ctx: Dict[st
     ])
 
 def recent_entries(merchant_id: int, limit: int = 50) -> List[Dict[str, Any]]:
-    rows = all(
-        "SELECT j.*, (SELECT json_group_array(json_object('account', l.account, 'party', l.party, 'amount', l.amount)) FROM journal_lines l WHERE l.journal_id = j.id) AS lines "
-        "FROM journals j WHERE j.merchant_id = ? ORDER BY j.entry_date DESC, j.id DESC LIMIT ?",
+    journals = all(
+        "SELECT * FROM journals WHERE merchant_id = ? ORDER BY entry_date DESC, id DESC LIMIT ?",
         merchant_id, limit
     )
-    return rows
+    if not journals:
+        return []
+    for j in journals:
+        lines = all(
+            "SELECT account, party, amount, order_id, product_id, qty FROM journal_lines WHERE journal_id = ?",
+            j['id']
+        )
+        j['lines'] = lines
+    return journals

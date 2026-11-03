@@ -150,7 +150,7 @@ def _flag_if_duplicate(merchant_id: int, order_id: int, source: str, actor: str)
     cutoff = (now - timedelta(hours=window)).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
     candidates = all(
         "SELECT id, total, status FROM orders WHERE merchant_id = ? AND customer_phone = ? "
-        "AND total = ? AND id != ? AND status != 'cancelled' AND is_duplicate = 0 AND placed_at >= ?",
+        "AND total = ? AND id != ? AND status != 'cancelled' AND is_duplicate = FALSE AND placed_at >= ?",
         merchant_id, order['customer_phone'], order['total'], order_id, cutoff
     )
     signature = _duplicate_signature(order_items(order_id))
@@ -159,7 +159,7 @@ def _flag_if_duplicate(merchant_id: int, order_id: int, source: str, actor: str)
             "SELECT product_id, qty FROM order_items WHERE order_id = ?", c['id']
         ))
         if other == signature:
-            update('orders', order_id, {'is_duplicate': 1})
+            update('orders', order_id, {'is_duplicate': True})
             raise_exception(merchant_id, {
                 'type': 'duplicate_order',
                 'key': f"dup:{order_id}",

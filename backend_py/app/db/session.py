@@ -13,6 +13,13 @@ import threading
 from pathlib import Path
 from contextlib import contextmanager
 from typing import Dict, Any, List, Optional
+from dotenv import load_dotenv
+
+# Auto-load .env from project root if present
+_root_dir = Path(__file__).resolve().parent.parent.parent
+_env_file = _root_dir / ".env"
+if _env_file.exists():
+    load_dotenv(dotenv_path=_env_file, override=False)
 
 _is_postgres: bool = False
 _db_conn = None
@@ -90,8 +97,14 @@ def open_db(target: Optional[str] = None):
             _tx_depth = 0
             return _db_conn
         except Exception as e:
+            if os.getenv("REQUIRE_SUPABASE", "false").lower() in ("true", "1", "yes"):
+                raise RuntimeError(f"CRITICAL: Failed to connect to Supabase PostgreSQL ({e}). SQLite is strictly disabled.")
             print(f"Warning: Failed to connect to Supabase PostgreSQL ({e}). Falling back to local SQLite.")
             _is_postgres = False
+            conn_str = os.getenv("DB_FILE") or str(here.parent.parent / "data" / "gross.db")
+
+    if target != ":memory:" and os.getenv("REQUIRE_SUPABASE", "false").lower() in ("true", "1", "yes"):
+        raise RuntimeError("CRITICAL: Only Supabase PostgreSQL is permitted. DATABASE_URL must be configured.")
 
     # Default: Local SQLite database
     _is_postgres = False
@@ -142,7 +155,17 @@ def get_db():
 
 def _format_sql(sql: str) -> str:
     if _is_postgres:
-        return sql.replace("?", "%s")
+        formatted = sql.replace("?", "%s")
+        # Ensure SQLite-style integer comparisons for boolean columns work seamlessly in PostgreSQL
+        formatted = formatted.replace("is_duplicate = 0", "is_duplicate = FALSE")
+        formatted = formatted.replace("is_duplicate = 1", "is_duplicate = TRUE")
+        formatted = formatted.replace("is_default = 1", "is_default = TRUE")
+        formatted = formatted.replace("is_default = 0", "is_default = FALSE")
+        formatted = formatted.replace("overdue = 1", "overdue = TRUE")
+        formatted = formatted.replace("overdue = 0", "overdue = FALSE")
+        formatted = formatted.replace("active = 1", "active = TRUE")
+        formatted = formatted.replace("active = 0", "active = FALSE")
+        return formatted
     return sql
 
 def one(sql: str, *params) -> Optional[Dict[str, Any]]:
@@ -200,12 +223,21 @@ def insert(table: str, row: Dict[str, Any]) -> int:
     
     if _is_postgres:
         placeholders = ", ".join(["%s"] * len(keys))
-        sql = f"INSERT INTO {table} ({', '.join(keys)}) VALUES ({placeholders}) RETURNING id"
-        with conn.cursor() as cur:
-            cur.execute(sql, vals)
-            row_id = cur.fetchone()["id"]
-            if _tx_depth == 0:
-                conn.commit()
+        if table in ("sessions", "reason_codes", "scheduler_runs"):
+            sql = f"INSERT INTO {table} ({', '.join(keys)}) VALUES ({placeholders})"
+            with conn.cursor() as cur:
+                cur.execute(sql, vals)
+                if _tx_depth == 0:
+                    conn.commit()
+            return 0
+        else:
+            sql = f"INSERT INTO {table} ({', '.join(keys)}) VALUES ({placeholders}) RETURNING id"
+            with conn.cursor() as cur:
+                cur.execute(sql, vals)
+                res = cur.fetchone()
+                row_id = res["id"] if res and "id" in res else 0
+                if _tx_depth == 0:
+                    conn.commit()
     else:
         placeholders = ", ".join(["?"] * len(keys))
         sql = f"INSERT INTO {table} ({', '.join(keys)}) VALUES ({placeholders})"

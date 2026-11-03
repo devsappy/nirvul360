@@ -631,7 +631,7 @@ def resolve(merchant_id: int, exception_id: int, action: str, body: Dict[str, An
                         {'account': 'settlement_suspense', 'amount': -parked},
                         {'account': 'courier_receivable', 'party': courier, 'amount': parked},
                     ])
-                update('orders', order_id, {'overdue': 1})
+                update('orders', order_id, {'overdue': True})
                 _fulfil(merchant_id, e['id'], f'courier_error: {format_taka(parked)} kept as receivable from {courier}', body, actor)
             elif action == 'file_claim':
                 if parked > 0:
@@ -678,7 +678,7 @@ def resolve(merchant_id: int, exception_id: int, action: str, body: Dict[str, An
                     ])
                 _fulfil(merchant_id, e['id'], 'confirm_received', {**(body or {}), 'journal_id': journal_id}, actor)
         elif action == 'chase':
-            update('orders', order_id, {'overdue': 1})
+            update('orders', order_id, {'overdue': True})
             update('exception_queue', e['id'], {'resolution': 'chasing the courier — receivable kept, flagged overdue'})
             return {'status': 'open', 'exception_id': e['id'], 'overdue': True}
         else:
@@ -732,12 +732,12 @@ def resolve(merchant_id: int, exception_id: int, action: str, body: Dict[str, An
         order_id = e['order_id']
         with tx():
             if action == 'confirm_duplicate':
-                update('orders', order_id, {'is_duplicate': 1})
+                update('orders', order_id, {'is_duplicate': True})
                 for j in live_journals_for_order(order_id, ['advance_received']):
                     reverse(j['id'], {'created_by': actor, 'source': 'system', 'memo': 'Duplicate order — advance posting reversed'})
                 _fulfil(merchant_id, e['id'], 'confirm_duplicate: order marked duplicate and excluded from reporting', body, actor)
             else:  # confirm_genuine
-                update('orders', order_id, {'is_duplicate': 0})
+                update('orders', order_id, {'is_duplicate': False})
                 _fulfil(merchant_id, e['id'], 'confirm_genuine: genuine repeat purchase', body, actor)
 
     event_bus.broadcast('exception_resolved', {'exceptionId': e['id'], 'type': e['type'], 'action': action}, merchant_id)

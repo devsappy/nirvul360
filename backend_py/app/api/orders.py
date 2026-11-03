@@ -42,15 +42,19 @@ async def list_orders(
 ):
     m_id = current["merchantId"]
     sql = "SELECT * FROM orders WHERE merchant_id = ?"
+    count_sql = "SELECT COUNT(*) AS c FROM orders WHERE merchant_id = ?"
     params = [m_id]
+    count_params = [m_id]
     if status:
         sql += " AND status = ?"
+        count_sql += " AND status = ?"
         params.append(status)
+        count_params.append(status)
     sql += " ORDER BY id DESC LIMIT ? OFFSET ?"
     params.extend([limit, offset])
 
     rows = all(sql, *params)
-    total_row = one("SELECT COUNT(*) AS c FROM orders WHERE merchant_id = ?", m_id)
+    total_row = one(count_sql, *count_params)
     total = total_row['c'] if total_row else len(rows)
 
     return {
@@ -93,6 +97,7 @@ async def create_new_order(data: CreateOrderInput, current: Dict[str, Any] = Dep
     return {"id": order_id}
 
 @router.post("/orders/{order_id}/status")
+@router.put("/orders/{order_id}/status")
 async def change_order_status(order_id: int, data: UpdateStatusInput, current: Dict[str, Any] = Depends(get_current_user)):
     m_id = current["merchantId"]
     actor = current["actor"]

@@ -64,7 +64,7 @@ def stock_value(merchant_id: int, as_of: str) -> Dict[str, Any]:
     rows = all(
         "SELECT p.id, p.name, "
         "COALESCE((SELECT SUM(qty) FROM stock_movements s WHERE s.product_id = p.id AND s.movement_date <= ?), 0) AS on_hand, "
-        "COALESCE((SELECT SUM(i.qty) FROM order_items i JOIN orders o ON o.id = i.order_id WHERE i.product_id = p.id AND o.status = 'in_transit' AND o.is_duplicate = 0), 0) AS in_transit "
+        "COALESCE((SELECT SUM(i.qty) FROM order_items i JOIN orders o ON o.id = i.order_id WHERE i.product_id = p.id AND o.status = 'in_transit' AND o.is_duplicate = FALSE), 0) AS in_transit "
         "FROM products p WHERE p.merchant_id = ?",
         as_of, merchant_id
     )
@@ -132,7 +132,7 @@ def dashboard(merchant_id: int, from_date: str, to_date: str) -> Dict[str, Any]:
         "COALESCE(SUM(CASE WHEN status = 'in_transit' THEN 1 ELSE 0 END), 0) AS in_transit, "
         "COALESCE(SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END), 0) AS delivered, "
         "COALESCE(SUM(CASE WHEN status = 'returned' THEN 1 ELSE 0 END), 0) AS returned "
-        "FROM orders WHERE merchant_id = ? AND order_date >= ? AND order_date <= ? AND is_duplicate = 0",
+        "FROM orders WHERE merchant_id = ? AND order_date >= ? AND order_date <= ? AND is_duplicate = FALSE",
         merchant_id, from_date, to_date
     )
 
@@ -175,7 +175,7 @@ def product_performance(merchant_id: int, from_date: str, to_date: str) -> Dict[
         "SELECT i.product_id, p.name, p.sku, o.id AS order_id, o.status, o.total, "
         "o.is_duplicate, o.order_date, o.delivered_date, i.qty, i.unit_price, i.line_total "
         "FROM orders o JOIN order_items i ON i.order_id = o.id JOIN products p ON p.id = i.product_id "
-        "WHERE o.merchant_id = ? AND o.order_date >= ? AND o.order_date <= ? AND o.is_duplicate = 0",
+        "WHERE o.merchant_id = ? AND o.order_date >= ? AND o.order_date <= ? AND o.is_duplicate = FALSE",
         merchant_id, from_date, to_date
     )
 
@@ -196,7 +196,7 @@ def product_performance(merchant_id: int, from_date: str, to_date: str) -> Dict[
     value_rows = all(
         "SELECT i.product_id, COALESCE(SUM(i.line_total), 0) AS v "
         "FROM orders o JOIN order_items i ON i.order_id = o.id "
-        "WHERE o.merchant_id = ? AND o.status = 'delivered' AND o.is_duplicate = 0 "
+        "WHERE o.merchant_id = ? AND o.status = 'delivered' AND o.is_duplicate = FALSE "
         "AND o.delivered_date >= ? AND o.delivered_date <= ? "
         "GROUP BY i.product_id",
         merchant_id, from_date, to_date
@@ -226,7 +226,7 @@ def product_performance(merchant_id: int, from_date: str, to_date: str) -> Dict[
     # Apportion per-order courier fees across products by line value
     line_rows = all(
         "SELECT i.order_id, i.product_id, i.line_total FROM order_items i "
-        "JOIN orders o ON o.id = i.order_id WHERE o.merchant_id = ? AND o.is_duplicate = 0",
+        "JOIN orders o ON o.id = i.order_id WHERE o.merchant_id = ? AND o.is_duplicate = FALSE",
         merchant_id
     )
     courier_share: Dict[int, int] = {}
@@ -320,27 +320,37 @@ def drilldown(merchant_id: int, metric: str, from_date: str, to_date: str) -> Di
     return {'metric': metric, 'total': total, 'rows': rows}
 
 
-def daily_summary_text(conn, merchant_id, for_date=None):
+def daily_summary_text(merchant_id: int, for_date: Optional[str] = None, conn=None) -> str:
     from app.lib.dates import add_days
     d = for_date or today()
     y = add_days(d, -1)
     pnl = profit_and_loss(merchant_id, y, y)
-    r = one('SELECT COUNT(*) c, COALESCE(SUM(CASE WHEN status=''delivered'' THEN 1 ELSE 0 END),0) del, COALESCE(SUM(CASE WHEN status=''returned'' THEN 1 ELSE 0 END),0) ret, COUNT(*) tot FROM orders WHERE merchant_id=? AND order_date=? AND is_duplicate=0', merchant_id, y) if False else None
-    import sqlite3
-    cur = conn.execute('SELECT COUNT(*) AS tot, COALESCE(SUM(CASE WHEN status=''delivered'' THEN 1 ELSE 0 END),0) AS del, COALESCE(SUM(CASE WHEN status=''returned'' THEN 1 ELSE 0 END),0) AS ret FROM orders WHERE merchant_id=? AND order_date=? AND is_duplicate=0', (merchant_id, y))
-    row = cur.fetchone()
-    delivered = int(row['del'] if hasattr(row,'keys') else row[1])
-    returned = int(row['ret'] if hasattr(row,'keys') else row[2])
-    placed = int(row['tot'] if hasattr(row,'keys') else row[0])
-    rr = (returned/placed) if placed else 0
+    row = one(
+        "SELECT COUNT(*) AS tot, "
+        "COALESCE(SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END), 0) AS del, "
+        "COALESCE(SUM(CASE WHEN status = 'returned' THEN 1 ELSE 0 END), 0) AS ret "
+        "FROM orders WHERE merchant_id = ? AND order_date = ? AND is_duplicate = FALSE",
+        merchant_id, y
+    )
+    delivered = int(row['del']) if row and 'del' in row else 0
+    returned = int(row['ret']) if row and 'ret' in row else 0
+    placed = int(row['tot']) if row and 'tot' in row else 0
+    rr = (returned / placed) if placed else 0
     exc = 0
     try:
         from app.domain.exceptions import unresolved_totals
-        exc = unresolved_totals(merchant_id).get('total',0)
+        exc = unresolved_totals(merchant_id).get('total', 0)
     except Exception:
         pass
     rev = format_taka_bn(pnl['gross_sales'])
     net = format_taka_bn(pnl['net_profit'])
-    text = 'Daily Summary ' + y + ':\nDelivered: ' + str(delivered) + '\nRevenue: ' + rev + '\nNet Profit: ' + net + '\nReturn rate: ' + ('%.1f' % (rr*100)) + '%\nUnresolved exceptions: ' + str(exc)
+    text = (
+        f"Daily Summary {y}:\n"
+        f"Delivered: {delivered}\n"
+        f"Revenue: {rev}\n"
+        f"Net Profit: {net}\n"
+        f"Return rate: {rr * 100:.1f}%\n"
+        f"Unresolved exceptions: {exc}"
+    )
     return text
 

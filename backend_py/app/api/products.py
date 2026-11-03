@@ -140,7 +140,7 @@ async def create_inventory_item(
 
     # Ensure active flag is saved
     if data.active is not None:
-        update("products", p_id, {"active": 1 if data.active else 0})
+        update("products", p_id, {"active": bool(data.active)})
 
     log_audit(
         merchant_id=m_id,
@@ -174,7 +174,7 @@ async def toggle_product_status(
 
     p = get_product(m_id, product_id)
     update("products", product_id, {
-        "active": 1 if data.active else 0,
+        "active": bool(data.active),
         "updated_at": now_iso()
     })
 

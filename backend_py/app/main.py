@@ -40,6 +40,8 @@ async def lifespan(app: FastAPI):
         open_db(pg_url)
         seed_reason_codes()
     else:
+        if os.getenv("REQUIRE_SUPABASE", "false").lower() in ("true", "1", "yes"):
+            raise RuntimeError("CRITICAL: Only Supabase PostgreSQL is permitted. DATABASE_URL must be configured.")
         db_file = os.getenv("DB_FILE")
         if not db_file:
             db_file = str(Path(__file__).resolve().parent.parent / "data" / "gross.db")

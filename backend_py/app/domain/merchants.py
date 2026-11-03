@@ -123,7 +123,7 @@ def create_cash_account(merchant_id: int, data: Dict[str, Any], actor: str = 'sy
         'merchant_id': merchant_id,
         'name': data['name'],
         'kind': data['kind'],
-        'is_default': bool(data.get('isDefault', False)),
+        'is_default': bool(data.get('isDefault') if data.get('isDefault') is not None else data.get('is_default', False)),
         'created_at': now_iso(),
     })
     if opening:
@@ -144,7 +144,7 @@ def create_cash_account(merchant_id: int, data: Dict[str, Any], actor: str = 'sy
 def resolve_cash_account(merchant_id: int, cash_account_id: Optional[int] = None) -> str:
     if cash_account_id:
         return str(cash_account_id)
-    default_acct = one("SELECT id FROM cash_accounts WHERE merchant_id = ? AND is_default = 1 LIMIT 1", merchant_id)
+    default_acct = one("SELECT id FROM cash_accounts WHERE merchant_id = ? AND is_default = TRUE LIMIT 1", merchant_id)
     if default_acct:
         return str(default_acct['id'])
     first_acct = one("SELECT id FROM cash_accounts WHERE merchant_id = ? LIMIT 1", merchant_id)

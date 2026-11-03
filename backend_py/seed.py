@@ -19,6 +19,15 @@ from app.domain.exceptions import scan_merchant
 from app.lib.dates import today, add_days
 
 def seed():
+    pg_url = os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DB_URL") or os.getenv("SUPABASE_POSTGRES_URL")
+    if os.getenv("REQUIRE_SUPABASE", "false").lower() in ("true", "1", "yes") or (pg_url and (pg_url.startswith("postgres://") or pg_url.startswith("postgresql://"))):
+        print("REQUIRE_SUPABASE is active. Executing Supabase PostgreSQL schema and seed...")
+        root_dir = Path(__file__).resolve().parent.parent
+        sys.path.insert(0, str(root_dir))
+        import migrate_to_supabase
+        migrate_to_supabase.run_migration()
+        return
+
     data_dir = Path(__file__).parent / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
     db_file = str(data_dir / "gross.db")

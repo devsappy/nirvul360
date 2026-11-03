@@ -299,7 +299,7 @@ async def pull_store_inventory(data: PullInventoryInput, current: Dict[str, Any]
         }, ctx)
 
         # Update active status
-        update("products", p_id, {"active": 1 if item.get("active", True) else 0})
+        update("products", p_id, {"active": bool(item.get("active", True))})
         imported_ids.append(p_id)
 
     # Update settings

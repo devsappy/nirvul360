@@ -65,7 +65,7 @@ def test_product_performance_rows_and_sorting():
         'order_date': '2026-11-02', 'customer_phone': '01714000000',
         'items': [{'product_id': p1, 'qty': 1, 'unit_price': 100000}],
     }, ctx)
-    dup = one("SELECT 1 AS v FROM orders WHERE is_duplicate = 1")
+    dup = one("SELECT 1 AS v FROM orders WHERE is_duplicate = TRUE")
     assert dup
 
     record_ad_spend(m_id, {'amount': 50000, 'date': '2026-11-01', 'note': 'boost'}, ctx)

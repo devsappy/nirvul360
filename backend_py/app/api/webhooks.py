@@ -23,19 +23,21 @@ async def courier_webhook(request: Request):
         raise HTTPException(status_code=403, detail="invalid webhook secret")
     payload = await request.json()
     # resolve merchant
-    merchant_slug = payload.get('merchant')
+    merchant_raw = payload.get('merchant_id') or payload.get('merchant') or payload.get('courier_code') or request.headers.get('X-Merchant-ID')
     merchant_id = None
-    if merchant_slug:
-        from app.db.session import one
-        m = one("SELECT id FROM merchants WHERE slug = ? OR code = ?", str(merchant_slug), str(merchant_slug))
-        if m:
-            merchant_id = m['id']
+    if merchant_raw:
+        if str(merchant_raw).isdigit():
+            m = one("SELECT id FROM merchants WHERE id = ?", int(merchant_raw))
+            if m:
+                merchant_id = m['id']
+        if not merchant_id:
+            m = one("SELECT id FROM merchants WHERE api_key = ?", str(merchant_raw))
+            if m:
+                merchant_id = m['id']
     if not merchant_id:
-        # try courier code
-        code = payload.get('courier_code') or payload.get('courier')
-        if code:
-            from app.db.session import one
-            m = one("SELECT id FROM merchants WHERE code = ?", str(code))
+        api_key_header = request.headers.get("X-API-Key")
+        if api_key_header:
+            m = one("SELECT id FROM merchants WHERE api_key = ?", api_key_header)
             if m:
                 merchant_id = m['id']
     if not merchant_id:

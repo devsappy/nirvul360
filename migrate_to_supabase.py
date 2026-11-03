@@ -49,15 +49,15 @@ def run_migration():
     try:
         conn = psycopg2.connect(pg_url, cursor_factory=RealDictCursor)
         conn.autocommit = True
-        print("✓ Connected to Supabase PostgreSQL successfully!")
+        print("[OK] Connected to Supabase PostgreSQL successfully!")
     except Exception as e:
-        print(f"✗ Failed to connect to Supabase: {e}")
+        print(f"[X] Failed to connect to Supabase: {e}")
         sys.exit(1)
 
     # 2. Apply Schema
     schema_path = root_dir / "supabase" / "schema.sql"
     if not schema_path.exists():
-        print(f"✗ Schema file not found at: {schema_path}")
+        print(f"[X] Schema file not found at: {schema_path}")
         sys.exit(1)
 
     print(f"Applying schema from {schema_path.name}...")
@@ -67,21 +67,24 @@ def run_migration():
     with conn.cursor() as cur:
         try:
             cur.execute(schema_sql)
-            print("✓ Tables, indexes, triggers, and Realtime publications applied cleanly!")
+            print("[OK] Tables, indexes, triggers, and Realtime publications applied cleanly!")
         except Exception as e:
             print(f"Warning/Error applying schema: {e}")
 
-    # 3. Populate Demo Data
-    print("\nSeeding multi-tenant accounts & sample data into Supabase...")
-    from app.db.session import open_db
-    open_db(pg_url)
-
-    from seed import seed
-    try:
-        seed()
-        print("✓ Seeded all multi-tenant accounts, products, orders, and double-entry journals!")
-    except Exception as e:
-        print(f"Warning during seed: {e}")
+    # 3. Populate Demo Data from supabase/seed.sql
+    seed_path = root_dir / "supabase" / "seed.sql"
+    if seed_path.exists():
+        print(f"\nApplying initial seed data from {seed_path.name}...")
+        with open(seed_path, "r", encoding="utf-8") as f:
+            seed_sql = f.read()
+        with conn.cursor() as cur:
+            try:
+                cur.execute(seed_sql)
+                print("[OK] Seeded all multi-tenant accounts, products, orders, and journals directly in Supabase!")
+            except Exception as e:
+                print(f"Warning during seed: {e}")
+    else:
+        print("[!] No supabase/seed.sql found.")
 
     # 4. Verification table counts
     print("\nSupabase Table Verification:")
@@ -95,9 +98,9 @@ def run_migration():
             try:
                 cur.execute(f"SELECT COUNT(*) as c FROM {t};")
                 count = cur.fetchone()['c']
-                print(f"  • {t:<22} : {count:>4} rows")
+                print(f"  * {t:<22} : {count:>4} rows")
             except Exception as e:
-                print(f"  • {t:<22} : error ({e})")
+                print(f"  * {t:<22} : error ({e})")
 
     print("\n" + "=" * 70)
     print("MIGRATION COMPLETED SUCCESSFULLY!")

@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS product_price_history (
 );
 CREATE INDEX IF NOT EXISTS idx_pph_lookup ON product_price_history(product_id, effective_from, id);
 
+DROP TRIGGER IF EXISTS pph_no_mutation ON product_price_history;
 CREATE TRIGGER pph_no_mutation
 BEFORE UPDATE OR DELETE ON product_price_history
 FOR EACH ROW EXECUTE FUNCTION prevent_immutable_mutation();
@@ -204,6 +205,7 @@ CREATE INDEX IF NOT EXISTS idx_journals_order ON journals(order_id);
 -- One reversal per journal, ever
 CREATE UNIQUE INDEX IF NOT EXISTS journals_one_reversal ON journals(reverses_journal_id) WHERE reverses_journal_id IS NOT NULL;
 
+DROP TRIGGER IF EXISTS journals_no_mutation ON journals;
 CREATE TRIGGER journals_no_mutation
 BEFORE UPDATE OR DELETE ON journals
 FOR EACH ROW EXECUTE FUNCTION prevent_immutable_mutation();
@@ -224,6 +226,7 @@ CREATE INDEX IF NOT EXISTS idx_lines_account ON journal_lines(merchant_id, accou
 CREATE INDEX IF NOT EXISTS idx_lines_order ON journal_lines(order_id, account);
 CREATE INDEX IF NOT EXISTS idx_lines_journal ON journal_lines(journal_id);
 
+DROP TRIGGER IF EXISTS lines_no_mutation ON journal_lines;
 CREATE TRIGGER lines_no_mutation
 BEFORE UPDATE OR DELETE ON journal_lines
 FOR EACH ROW EXECUTE FUNCTION prevent_immutable_mutation();
@@ -338,6 +341,7 @@ CREATE TABLE IF NOT EXISTS audit_log (
   before       TEXT,
   after        TEXT
 );
+DROP TRIGGER IF EXISTS audit_no_mutation ON audit_log;
 CREATE TRIGGER audit_no_mutation
 BEFORE UPDATE OR DELETE ON audit_log
 FOR EACH ROW EXECUTE FUNCTION prevent_immutable_mutation();
@@ -381,11 +385,19 @@ CREATE TABLE IF NOT EXISTS scheduler_runs (
   PRIMARY KEY (merchant_id, job, run_key)
 );
 
--- 4. ENABLE SUPABASE REALTIME PUBLICATION
--- Allows web clients and listeners to subscribe to changes via Supabase Realtime
 DO $$
+DECLARE
+  tbl TEXT;
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE orders, journals, exception_queue, whatsapp_messages, products;
+    FOR tbl IN SELECT unnest(ARRAY['orders', 'journals', 'exception_queue', 'whatsapp_messages', 'products'])
+    LOOP
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = tbl
+      ) THEN
+        EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE %I', tbl);
+      END IF;
+    END LOOP;
   END IF;
 END $$;

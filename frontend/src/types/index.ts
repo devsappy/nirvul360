@@ -49,6 +49,7 @@ export interface Order {
   customer_name?: string;
   customer_phone?: string;
   address?: string;
+  shipping_address?: string;
   courier?: string;
   consignment_id?: string;
   status: 'placed' | 'in_transit' | 'delivered' | 'returned' | 'cancelled';

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { api } from '@/lib/api';
+import { api, getApiBaseUrl } from '@/lib/api';
 import { Order } from '@/types';
 import {
   CourierIcon,
@@ -93,7 +93,9 @@ export function SettlementsView({
     formData.append('courier', selectedCourier);
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/settlements/preview`, {
+      const base = getApiBaseUrl();
+      const endpoint = base ? `${base}/api/settlements/preview` : '/api/settlements/preview';
+      const res = await fetch(endpoint, {
         method: 'POST',
         body: formData,
         credentials: 'include',
@@ -341,7 +343,7 @@ export function SettlementsView({
                           <span className="text-[11px] text-[#3A8067]">{o.customer_phone}</span>
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 text-[#3A8067] max-w-xs truncate">{o.shipping_address || 'Dhaka, Bangladesh'}</td>
+                      <td className="py-3.5 px-4 text-[#3A8067] max-w-xs truncate">{o.shipping_address || o.address || 'Dhaka, Bangladesh'}</td>
                       <td className="py-3.5 px-4 text-right font-bold text-[#025033]">
                         ৳{((o.cod_amount || 0) / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </td>

@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Order } from '@/types';
-import { formatTaka, api } from '@/lib/api';
+import { formatTaka, api, getApiBaseUrl } from '@/lib/api';
 import { PlusIcon, DownloadCloudIcon } from './icons';
 
 interface OrdersViewProps {
@@ -57,7 +57,9 @@ export function OrdersView({ orders = [], onRefresh, onOpenOrderModal, showToast
     formData.append('courier', 'pathao');
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/orders/import-courier-csv`, {
+      const base = getApiBaseUrl();
+      const endpoint = base ? `${base}/api/orders/import-courier-csv` : '/api/orders/import-courier-csv';
+      const res = await fetch(endpoint, {
         method: 'POST',
         body: formData,
         credentials: 'include',

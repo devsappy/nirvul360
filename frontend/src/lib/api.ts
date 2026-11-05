@@ -1,7 +1,36 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+/**
+ * Resolves the backend base URL dynamically:
+ * - On the server (Next.js server-side functions / SSR): uses process.env.BACKEND_URL (injected by Vercel service binding)
+ *   or falls back to NEXT_PUBLIC_API_URL / localhost.
+ * - In the browser: uses process.env.NEXT_PUBLIC_API_URL if configured, otherwise returns '' (relative path)
+ *   so requests are routed to the same origin and handled by Vercel's top-level rewrites.
+ */
+export function getApiBaseUrl(): string {
+  if (typeof window === 'undefined') {
+    // Server runtime: Vercel service binding injects BACKEND_URL
+    if (process.env.BACKEND_URL) {
+      return process.env.BACKEND_URL.replace(/\/+$/, '');
+    }
+    return (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
+  }
+
+  // Client runtime (browser)
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, '');
+  }
+  return '';
+}
 
 export async function apiRequest<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint}`;
+  let url: string;
+  if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+    url = endpoint;
+  } else {
+    const base = getApiBaseUrl();
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    url = base ? `${base}${cleanEndpoint}` : cleanEndpoint;
+  }
+
   const headers = {
     'Content-Type': 'application/json',
     ...(options.headers || {}),

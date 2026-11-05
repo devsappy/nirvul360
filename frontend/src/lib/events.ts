@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { getApiBaseUrl } from './api';
 
 type EventCallback = (event: { type: string; payload?: any; [key: string]: any }) => void;
 
@@ -17,7 +17,8 @@ class RealtimeClient {
     }
 
     this.setStatus('connecting');
-    const url = `${API_BASE}/api/events`;
+    const base = getApiBaseUrl();
+    const url = `${base}/api/events`;
 
     try {
       this.es = new EventSource(url, { withCredentials: true });

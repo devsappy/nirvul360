@@ -146,3 +146,38 @@ def test_admin_pause_and_resume_tenant():
     client.post("/api/auth/login", json={'email': 'overdue_owner@test.bd', 'password': 'password123'})
     orders_res2 = client.get("/api/orders")
     assert orders_res2.status_code == 200
+
+def test_admin_list_platform_users():
+    m_id = create_merchant({'name': 'User Test Store', 'phone': '01900000004'})
+    create_user(m_id, {
+        'name': 'Chief Super Admin',
+        'email': 'super_users@gross.bd',
+        'role': 'super_admin',
+        'password': 'password123'
+    })
+    create_user(m_id, {
+        'name': 'Regular Owner',
+        'email': 'regular_owner@test.bd',
+        'role': 'agency_owner',
+        'password': 'password123'
+    })
+
+    # 1. Login as Super Admin
+    client.post("/api/auth/logout")
+    login_res = client.post("/api/auth/login", json={'email': 'super_users@gross.bd', 'password': 'password123'})
+    assert login_res.status_code == 200
+
+    # 2. Fetch /api/admin/users
+    res = client.get("/api/admin/users")
+    assert res.status_code == 200
+    data = res.json()
+    assert "summary" in data
+    assert "users" in data
+    assert data["summary"]["total_users"] >= 2
+    assert data["summary"]["active_users"] >= 1
+    # Check that super_users is listed and active
+    user_match = next((u for u in data["users"] if u["email"] == "super_users@gross.bd"), None)
+    assert user_match is not None
+    assert user_match["is_active"] is True
+    assert user_match["role"] == "super_admin"
+

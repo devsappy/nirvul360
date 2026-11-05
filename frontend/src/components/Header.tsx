@@ -6,8 +6,8 @@ import { User } from '@/types';
 
 interface HeaderProps {
   user: User | null;
-  timeRange: 'month' | 'quarter' | 'year';
-  onTimeRangeChange: (range: 'month' | 'quarter' | 'year') => void;
+  timeRange: 'month' | 'last30' | 'quarter' | 'year';
+  onTimeRangeChange: (range: 'month' | 'last30' | 'quarter' | 'year') => void;
   exceptionsCount: number;
   onReviewExceptions: () => void;
   onOpenExpenseModal: () => void;
@@ -25,21 +25,26 @@ export function Header({
   onOpenPurchaseModal,
   onRefresh,
 }: HeaderProps) {
+  const isSuperAdmin = user?.role === 'super_admin';
   const firstName = user?.name ? user.name.split(' ')[0] : 'Tamim';
 
+  if (isSuperAdmin) {
+    return null;
+  }
+
   return (
-    <header className="flex flex-col gap-4 pb-6 border-b border-[#EBE7DF]">
+    <header className="flex flex-col gap-4 pb-6 border-b border-[#E5EAE7]">
       {/* Top Bar with Search & Quick Controls */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         {/* Eyebrow & Main Greeting */}
         <div className="flex flex-col">
-          <span className="text-[11px] font-bold tracking-wider text-stone-600 uppercase">
-            {timeRange === 'month' ? 'THIS MONTH' : timeRange === 'quarter' ? 'THIS QUARTER' : 'THIS YEAR'}
+          <span className="text-[11px] font-bold tracking-wider text-[#3A8067] uppercase">
+            {timeRange === 'month' ? 'THIS MONTH' : timeRange === 'last30' ? 'LAST 30 DAYS' : timeRange === 'quarter' ? 'THIS QUARTER' : 'THIS YEAR'}
           </span>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-stone-900 tracking-tight leading-tight">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-[#025033] tracking-tight leading-tight">
             Good morning, {firstName}
           </h1>
-          <p className="text-xs md:text-sm text-stone-500 font-medium">
+          <p className="text-xs md:text-sm text-[#3A8067] font-medium">
             A clear view of orders, courier cashflow, and confirmed profit.
           </p>
         </div>
@@ -48,27 +53,27 @@ export function Header({
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Search bar */}
           <div className="relative min-w-[220px]">
-            <SearchIcon className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <SearchIcon className="w-4 h-4 text-[#3A8067] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search orders, parcels, SKU..."
-              className="w-full bg-white border border-[#E8E4DA] rounded-xl pl-9 pr-3 py-2 text-xs text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900/10 focus:border-stone-900 transition"
+              className="w-full bg-[#FFFFFF] border border-[#E5EAE7] rounded-xl pl-9 pr-3 py-2 text-xs text-[#025033] placeholder-[#3A8067] focus:outline-none focus:border-[#025033] transition"
             />
           </div>
 
           {/* Time range selector pills */}
-          <div className="bg-[#EBE7DF]/80 p-1 rounded-xl flex items-center gap-1 border border-[#DFDAD0]">
-            {(['month', 'quarter', 'year'] as const).map((r) => (
+          <div className="bg-[#E6F7EF] p-1 rounded-xl flex items-center gap-1 border border-[#CAE4D8]">
+            {(['month', 'last30', 'quarter', 'year'] as const).map((r) => (
               <button
                 key={r}
                 onClick={() => onTimeRangeChange(r)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition ${
                   timeRange === r
-                    ? 'bg-stone-900 text-white shadow-xs font-bold'
-                    : 'text-stone-600 hover:text-stone-900 hover:bg-white/50'
+                    ? 'bg-[#025033] text-[#FFFFFF] shadow-xs font-bold'
+                    : 'text-[#3A8067] hover:text-[#025033] hover:bg-[#FFFFFF]'
                 }`}
               >
-                {r === 'month' ? 'This month' : r}
+                {r === 'month' ? 'This month' : r === 'last30' ? 'Last 30 Days' : r}
               </button>
             ))}
           </div>
@@ -77,9 +82,9 @@ export function Header({
           {exceptionsCount > 0 && (
             <button
               onClick={onReviewExceptions}
-              className="flex items-center gap-1.5 bg-stone-900 text-amber-300 hover:bg-black font-semibold text-xs px-3.5 py-2 rounded-xl transition shadow-xs"
+              className="flex items-center gap-1.5 bg-[#025033] text-[#CAE4D8] hover:bg-[#05572F] font-semibold text-xs px-3.5 py-2 rounded-xl transition shadow-xs border border-[#00432C]"
             >
-              <AlertIcon className="w-3.5 h-3.5 text-amber-300" />
+              <AlertIcon className="w-3.5 h-3.5 text-[#CAE4D8]" />
               <span>Review Exceptions ({exceptionsCount})</span>
             </button>
           )}
@@ -87,18 +92,18 @@ export function Header({
           {/* Quick Add Expense Button */}
           <button
             onClick={onOpenExpenseModal}
-            className="flex items-center gap-1.5 bg-white border border-stone-300 hover:border-stone-400 text-stone-800 font-semibold text-xs px-3 py-2 rounded-xl transition shadow-2xs hover:bg-stone-50"
+            className="flex items-center gap-1.5 bg-[#FFFFFF] border border-[#E5EAE7] hover:border-[#3A8067] text-[#025033] font-semibold text-xs px-3 py-2 rounded-xl transition shadow-2xs hover:bg-[#E6F7EF]"
           >
-            <PlusIcon className="w-3.5 h-3.5 text-stone-700" />
+            <PlusIcon className="w-3.5 h-3.5 text-[#025033]" />
             <span>+ Expense</span>
           </button>
 
           {/* Quick Add Purchase Button */}
           <button
             onClick={onOpenPurchaseModal}
-            className="flex items-center gap-1.5 bg-white border border-stone-300 hover:border-stone-400 text-stone-800 font-semibold text-xs px-3 py-2 rounded-xl transition shadow-2xs hover:bg-stone-50"
+            className="flex items-center gap-1.5 bg-[#FFFFFF] border border-[#E5EAE7] hover:border-[#3A8067] text-[#025033] font-semibold text-xs px-3 py-2 rounded-xl transition shadow-2xs hover:bg-[#E6F7EF]"
           >
-            <PlusIcon className="w-3.5 h-3.5 text-stone-700" />
+            <PlusIcon className="w-3.5 h-3.5 text-[#025033]" />
             <span>+ Purchase</span>
           </button>
 
@@ -106,9 +111,9 @@ export function Header({
           <button
             onClick={onRefresh}
             title="Refresh Ledger"
-            className="p-2 bg-white border border-[#E8E4DA] hover:bg-stone-50 text-stone-600 hover:text-stone-900 rounded-xl transition shadow-2xs"
+            className="p-2 bg-[#FFFFFF] border border-[#E5EAE7] hover:bg-[#E6F7EF] text-[#025033] rounded-xl transition shadow-2xs"
           >
-            <RefreshIcon className="w-4 h-4" />
+            <RefreshIcon className="w-4 h-4 text-[#025033]" />
           </button>
         </div>
       </div>

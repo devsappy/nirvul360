@@ -53,22 +53,23 @@ COURIERS: Dict[str, Dict[str, Any]] = {
     'pathao': {
         'display_name': 'Pathao Courier',
         'aliases': {
-            'consignment_id': ['consignment id', 'consignment', 'tracking code', 'tracking id', 'parcel id', 'parcel tracking id'],
-            'customer_name': ['customer name', 'customer', 'name', 'recipient name', 'receiver name'],
-            'order_id': ['order id', 'order code', 'invoice id', 'merchant order id', 'reference'],
-            'cod_collected': ['cod', 'cod amount', 'collected amount', 'amount collected', 'cash collection'],
-            'status': ['status', 'delivery status', 'parcel status', 'order status'],
-            'delivery_charge': ['delivery charge', 'delivery fee', 'delivery charges'],
+            'consignment_id': ['order consignment id', 'consignment id', 'consignment', 'tracking code', 'tracking id', 'parcel id', 'parcel tracking id'],
+            'customer_name': ['recipient name', 'customer name', 'customer', 'name', 'receiver name'],
+            'order_id': ['merchant order id', 'order id', 'order code', 'invoice id', 'reference'],
+            'cod_collected': ['collected amount', 'collectable amount', 'cod', 'cod amount', 'amount collected', 'cash collection'],
+            'status': ['order status', 'status', 'delivery status', 'parcel status'],
+            'delivery_charge': ['delivery fee', 'delivery charge', 'delivery charges'],
             'cod_fee': ['cod fee', 'cod charge', 'cash collection fee', 'processing fee'],
             'return_charge': ['return charge', 'return fee'],
-            'settlement_date': ['delivered date', 'settlement date', 'paid date', 'payment date', 'date', 'delivery date'],
-            'consignment_total': ['total', 'consignment total', 'total amount'],
+            'settlement_date': ['order status updated at', 'order created at', 'delivered date', 'settlement date', 'paid date', 'payment date', 'date', 'delivery date'],
+            'consignment_total': ['total fee', 'total', 'consignment total', 'total amount'],
         },
         'status_words': {
             'delivered': ['delivered', 'delivered & paid', 'successful delivery'],
-            'returned': ['return', 'returned', 'return picked up'],
-            'partial': ['partial delivery', 'partial return'],
-            'cancelled': ['cancelled', 'canceled'],
+            'returned': ['return pending', 'returned to merchant', 'paid return', 'return', 'returned', 'return picked up'],
+            'in_transit': ['waiting for pickup', 'on the way to delivery hub', 'in transit'],
+            'partial': ['exchange', 'partial delivery', 'partial return'],
+            'cancelled': ['pickup failed', 'pickup cancel', 'cancelled', 'canceled'],
         },
     },
     'redx': {
@@ -177,6 +178,19 @@ def map_columns(headers: List[str], courier: str) -> Tuple[Dict[str, int], List[
                 if idx in mapping.values():
                     continue
                 if h.startswith(alias):
+                    mapping[col] = idx
+                    break
+            if col in mapping:
+                break
+    # Third pass: substring match (e.g. 'order consignment id' contains 'consignment id')
+    for col in CANONICAL_COLUMNS:
+        if col in mapping:
+            continue
+        for alias in cfg['aliases'][col]:
+            for idx, h in enumerate(cleaned):
+                if idx in mapping.values():
+                    continue
+                if alias in h:
                     mapping[col] = idx
                     break
             if col in mapping:

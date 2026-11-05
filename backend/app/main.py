@@ -30,6 +30,7 @@ from app.api.products import router as products_router
 from app.api.exceptions import router as exceptions_router
 from app.api.settlements import router as settlements_router
 from app.api.reports import router as reports_router
+from app.api.pos import router as pos_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -86,6 +87,7 @@ app.include_router(products_router)
 app.include_router(exceptions_router)
 app.include_router(settlements_router)
 app.include_router(reports_router)
+app.include_router(pos_router)
 
 @app.get("/health")
 def health_check():

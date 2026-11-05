@@ -80,11 +80,26 @@ def run_migration():
         with conn.cursor() as cur:
             try:
                 cur.execute(seed_sql)
-                print("[OK] Seeded all multi-tenant accounts, products, orders, and journals directly in Supabase!")
+                print("[OK] Seeded all multi-tenant accounts, products, and orders in Supabase!")
             except Exception as e:
                 print(f"Warning during seed: {e}")
     else:
         print("[!] No supabase/seed.sql found.")
+
+    # 3.5. Post the double-entry journals for the seeded orders through the
+    #      accounting engine (direct-SQL seeds bypass postings; this repairs that).
+    try:
+        from backfill_ledger import backfill
+        rep = backfill()
+        if rep['unbalanced']:
+            print(f"[!] Backfill verification: {rep['unbalanced']} unbalanced journal(s)!")
+        else:
+            print("[OK] Ledger backfill complete — every journal balances to zero.")
+        for m in rep['merchants']:
+            print(f"     {m['name']}: sales ৳{m['gross_sales'] / 100:,.0f} • "
+                  f"net profit ৳{m['net_profit'] / 100:,.0f} • cash ৳{m['cash'] / 100:,.0f}")
+    except Exception as e:
+        print(f"[!] Ledger backfill failed (run `python backfill_ledger.py` later): {e}")
 
     # 4. Verification table counts
     print("\nSupabase Table Verification:")

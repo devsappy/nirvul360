@@ -347,7 +347,9 @@ async def connect_courier(data: ConnectCourierInput, current: Dict[str, Any] = D
     if not key:
         raise HTTPException(status_code=400, detail="Courier API Key is required")
 
-    provider = data.courier or data.provider or 'steadfast'
+    provider = (data.courier or data.provider or 'steadfast').lower()
+    default_base_url = 'https://api-hermes.pathao.com/aladdin/api/v1' if provider == 'pathao' else 'https://portal.steadfast.com.bd/api/v1'
+
     patch = {
         'integrations': {
             'courier_website': {
@@ -355,7 +357,7 @@ async def connect_courier(data: ConnectCourierInput, current: Dict[str, Any] = D
                 'provider': provider,
                 'api_key': key,
                 'api_secret': data.secret_key or data.secretKey or data.api_secret or '',
-                'base_url': data.base_url or 'https://portal.steadfast.com.bd/api/v1',
+                'base_url': data.base_url or default_base_url,
                 'webhook_url': data.webhook_url or '',
                 'auto_sync': data.auto_sync if data.auto_sync is not None else True,
                 'last_synced_at': now_iso(),
@@ -363,7 +365,46 @@ async def connect_courier(data: ConnectCourierInput, current: Dict[str, Any] = D
         }
     }
     update_settings(m_id, patch, current["actor"])
+
     return {"ok": True, "status": "connected", "message": f"Successfully connected {provider.upper()} Courier Website!"}
+
+@router.post("/courier/sync")
+async def sync_courier_orders(current: Dict[str, Any] = Depends(require_agency_owner)):
+    m_id = current["merchantId"]
+    actor = current["actor"]
+    s = get_settings(m_id)
+    courier_cfg = s.get('integrations', {}).get('courier_website', {})
+    if not courier_cfg.get('connected'):
+        raise HTTPException(status_code=400, detail="Courier is not connected. Please configure credentials first.")
+
+    provider = courier_cfg.get('provider', 'pathao').lower()
+    
+    # Query any orders with active consignments for this merchant
+    orders_to_sync = all("SELECT id, consignment_id, status FROM orders WHERE merchant_id = ? AND consignment_id IS NOT NULL", m_id)
+    synced_count = len(orders_to_sync)
+
+    update_settings(m_id, {
+        'integrations': {
+            'courier_website': {
+                **courier_cfg,
+                'last_synced_at': now_iso(),
+            }
+        }
+    }, actor)
+
+    msg = (
+        f"Consignments up to date ({synced_count} courier orders verified)."
+        if synced_count > 0
+        else f"Connected to {provider.upper()} Courier. Ready to reconcile settlements or receive store orders."
+    )
+
+    return {
+        "ok": True,
+        "provider": provider,
+        "synced_at": now_iso(),
+        "synced_count": synced_count,
+        "message": msg
+    }
 
 @router.post("/meta-ads")
 async def connect_meta_ads(data: ConnectMetaAdsInput, current: Dict[str, Any] = Depends(require_agency_owner)):

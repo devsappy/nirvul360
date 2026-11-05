@@ -97,16 +97,17 @@ async def preview_json(body: PreviewBody, current: Dict[str, Any] = Depends(get_
 def _match_summary(merchant_id: int, rows: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Read-only consignment→order matching for the preview summary."""
     matched = 0
+    order_hits = db_all(
+        "SELECT id, consignment_id FROM orders WHERE merchant_id = ? AND consignment_id IS NOT NULL",
+        merchant_id
+    )
+    consignment_to_id = {o['consignment_id']: o['id'] for o in order_hits if o.get('consignment_id')}
+
     for r in rows:
         consignment = r.get('consignment_id')
-        if consignment:
-            hit = db_all(
-                "SELECT id FROM orders WHERE merchant_id = ? AND consignment_id = ? LIMIT 1",
-                merchant_id, consignment
-            )
-            if hit:
-                r['order_id'] = hit[0]['id']
-                matched += 1
+        if consignment and consignment in consignment_to_id:
+            r['order_id'] = consignment_to_id[consignment]
+            matched += 1
 
     by_status: Dict[str, Dict[str, Any]] = {}
     total_cod = 0

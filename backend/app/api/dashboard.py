@@ -3,6 +3,7 @@ from typing import Dict, Any, Optional
 from app.api.auth import get_current_user
 from app.domain.reports import dashboard, drilldown, profit_and_loss, cash_position
 from app.domain.exceptions import unresolved_totals
+from app.domain.ledger import balances_by_party
 from app.db.session import all, one
 from app.lib.dates import today, month_start, month_end, add_days
 
@@ -34,6 +35,7 @@ async def get_dashboard(
     exc = dash.get("attention") or unresolved_totals(m_id)
 
     gross_sales = pnl.get("gross_sales", 0)
+    net_sales = pnl.get("net_sales", 0)
     gross_profit = pnl.get("gross_profit", 0)
     net_profit = pnl.get("net_profit", 0)
 
@@ -45,9 +47,47 @@ async def get_dashboard(
     if delivery_rate is None:
         delivery_rate = (delivered / placed) if placed > 0 else 0.0
 
-    net_margin_pct = (net_profit / gross_sales * 100) if gross_sales > 0 else 0.0
+    # Margins are computed on NET sales (gross minus returns/held) so the KPI card
+    # and the P&L statement can never disagree.
+    net_margin_pct = (net_profit / net_sales * 100) if net_sales > 0 else 0.0
+    gross_margin_pct = (gross_profit / net_sales * 100) if net_sales > 0 else 0.0
+
     held_at_couriers = cash_info.get("held_at_couriers", 0)
-    courier_accounts_count = len(cash_info.get("cash_accounts", [])) or 2
+    # Real couriers currently holding COD money (non-zero courier_receivable balance).
+    courier_accounts_count = len(balances_by_party(m_id, "courier_receivable", on_or_before=t))
+
+    # --- Courier settlement truth (not derived from order counts) -----------------
+    # Settled: cohort orders that have a live settlement journal (COD money returned
+    # by the courier). Reconciled: settled orders with no open courier exception.
+    settled_row = one(
+        "SELECT COUNT(DISTINCT o.id) AS settled FROM orders o "
+        "WHERE o.merchant_id = ? AND o.order_date >= ? AND o.order_date <= ? AND o.is_duplicate = FALSE "
+        "AND o.status IN ('delivered', 'returned') "
+        "AND EXISTS ("
+        "  SELECT 1 FROM journals j WHERE j.order_id = o.id AND j.kind = 'settlement' "
+        "  AND j.reverses_journal_id IS NULL "
+        "  AND NOT EXISTS (SELECT 1 FROM journals r WHERE r.reverses_journal_id = j.id)"
+        ")",
+        m_id, f, t
+    )
+    settled = int(settled_row["settled"]) if settled_row else 0
+
+    reconciled_row = one(
+        "SELECT COUNT(DISTINCT o.id) AS r FROM orders o "
+        "WHERE o.merchant_id = ? AND o.order_date >= ? AND o.order_date <= ? AND o.is_duplicate = FALSE "
+        "AND o.status IN ('delivered', 'returned') "
+        "AND EXISTS ("
+        "  SELECT 1 FROM journals j WHERE j.order_id = o.id AND j.kind = 'settlement' "
+        "  AND j.reverses_journal_id IS NULL "
+        "  AND NOT EXISTS (SELECT 1 FROM journals r WHERE r.reverses_journal_id = j.id)"
+        ") "
+        "AND NOT EXISTS ("
+        "  SELECT 1 FROM exception_queue e WHERE e.order_id = o.id AND e.status = 'open' "
+        "  AND e.type IN ('short_settlement', 'zero_settlement', 'unsettled_cod', 'stuck_parcel')"
+        ")",
+        m_id, f, t
+    )
+    reconciled = int(reconciled_row["r"]) if reconciled_row else 0
 
     kpis = {
         "delivered_sales": gross_sales,
@@ -60,14 +100,22 @@ async def get_dashboard(
         "orders_in_transit": in_transit,
         "returned_orders": returned,
         "courier_accounts_count": courier_accounts_count,
+        "delivered_orders": delivered,
+        "gross_margin_pct": round(gross_margin_pct, 1),
+        "settled_orders": settled,
+        "reconciled_orders": reconciled,
+        "misc_expenses": pnl.get("sections", {}).get("other", {}).get("amount", 0),
     }
+
+    def _pct(n: int) -> str:
+        return f"{int((n / placed * 100))}%" if placed > 0 else "0%"
 
     pipeline = [
         {"key": "placed", "label": "Placed", "count": placed, "pct": "100%"},
-        {"key": "in_transit", "label": "In Transit", "count": in_transit, "pct": f"{int((in_transit / placed * 100))}%" if placed > 0 else "0%"},
-        {"key": "delivered", "label": "Delivered", "count": delivered, "pct": f"{int((delivered / placed * 100))}%" if placed > 0 else "0%"},
-        {"key": "settled", "label": "COD Settled", "count": max(0, delivered - returned), "pct": f"{int((max(0, delivered - returned) / placed * 100))}%" if placed > 0 else "0%"},
-        {"key": "reconciled", "label": "Reconciled", "count": max(0, delivered - returned), "pct": f"{int((max(0, delivered - returned) / placed * 100))}%" if placed > 0 else "0%"},
+        {"key": "in_transit", "label": "In Transit", "count": in_transit, "pct": _pct(in_transit)},
+        {"key": "delivered", "label": "Delivered", "count": delivered, "pct": _pct(delivered)},
+        {"key": "settled", "label": "COD Settled", "count": settled, "pct": _pct(settled)},
+        {"key": "reconciled", "label": "Reconciled", "count": reconciled, "pct": _pct(reconciled)},
     ]
 
     by_type = exc.get("by_type", {})

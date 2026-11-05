@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, File, Form, UploadFile
 from typing import Dict, Any, Optional, List
 from pydantic import BaseModel
 from app.api.auth import get_current_user
 from app.domain.orders import create_order, apply_status, get_order, order_items
+from app.domain.orders_import import parse_courier_csv, import_courier_orders
 from app.domain.exceptions import scan_merchant
 from app.lib.money import to_poisha
 from app.db.session import all, one
@@ -95,6 +96,23 @@ async def create_new_order(data: CreateOrderInput, current: Dict[str, Any] = Dep
 
     scan_merchant(m_id)
     return {"id": order_id}
+
+@router.post("/orders/import-courier-csv")
+async def import_courier_csv_endpoint(
+    file: UploadFile = File(...),
+    courier: str = Form("pathao"),
+    current: Dict[str, Any] = Depends(get_current_user)
+):
+    m_id = current["merchantId"]
+    actor = current["actor"]
+    data = await file.read()
+    records, warnings = parse_courier_csv(data, file.filename or "deliveries.csv", courier)
+    if not records:
+        raise HTTPException(status_code=400, detail="No valid order records found in file. " + "; ".join(warnings))
+
+    result = import_courier_orders(m_id, records, courier, actor)
+    scan_merchant(m_id)
+    return {**result, "warnings": warnings}
 
 @router.post("/orders/{order_id}/status")
 @router.put("/orders/{order_id}/status")

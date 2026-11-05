@@ -7,7 +7,7 @@ from typing import Optional, Dict, Any
 from fastapi import APIRouter, Request, Response, HTTPException, Depends
 from pydantic import BaseModel
 from app.db.session import one, insert, run
-from app.domain.merchants import verify_password, get_merchant
+from app.domain.merchants import verify_password, get_merchant, create_merchant, create_cash_account, hash_password
 from app.domain.roles import (
     role_rank, ROLE_LABELS, is_super_admin, is_admin_or_super,
     can_connect_integrations, can_add_misc_expense, can_add_product_expense,
@@ -22,6 +22,13 @@ class LoginRequest(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     identifier: Optional[str] = None
+    password: str
+
+class RegisterRequest(BaseModel):
+    name: str
+    store_name: Optional[str] = None
+    email: str
+    phone: Optional[str] = None
     password: str
 
 def get_current_user(request: Request) -> Dict[str, Any]:
@@ -140,6 +147,110 @@ async def login(req: LoginRequest, request: Request, response: Response):
             "name": user['name'],
             "email": user['email'],
             "role": user['role'],
+            "role_label": ROLE_LABELS.get(user['role'], user['role']),
+        }
+    }
+
+@router.post("/auth/register")
+async def register(req: RegisterRequest, request: Request, response: Response):
+    name = (req.name or "").strip()
+    if not name or len(name) < 2:
+        raise HTTPException(status_code=400, detail="Full name is required (at least 2 characters).")
+
+    email = (req.email or "").strip().lower()
+    if not email or "@" not in email or "." not in email:
+        raise HTTPException(status_code=400, detail="A valid email address is required.")
+
+    password = req.password or ""
+    if len(password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters long.")
+
+    phone = (req.phone or "").strip()
+    phone = phone if phone else None
+
+    # Check for existing email
+    existing_user = one("SELECT id FROM users WHERE lower(COALESCE(email, '')) = ?", email)
+    if existing_user:
+        raise HTTPException(status_code=400, detail="An account with this email address already exists. Please sign in.")
+
+    # Check for existing phone if provided
+    if phone:
+        existing_phone = one("SELECT id FROM users WHERE whatsapp = ?", phone)
+        if existing_phone:
+            raise HTTPException(status_code=400, detail="An account with this phone number already exists.")
+
+    store_name = (req.store_name or "").strip()
+    if not store_name:
+        store_name = f"{name}'s Store"
+
+    # 1. Create merchant organization in database
+    merchant_id = create_merchant({
+        'name': store_name,
+    })
+
+    # 2. Create default cash in hand account for double-entry records
+    create_cash_account(merchant_id, {
+        'name': 'Main Cash in Hand',
+        'kind': 'cash',
+        'is_default': True,
+        'opening_balance': 0,
+    }, actor=f"register:{email}")
+
+    # 3. Create user as Agency Owner of the new merchant
+    pwd_hash = hash_password(password)
+    user_id = insert('users', {
+        'merchant_id': merchant_id,
+        'name': name,
+        'email': email,
+        'password_hash': pwd_hash,
+        'whatsapp': phone,
+        'role': 'agency_owner',
+        'created_at': now_iso(),
+    })
+    user = one("SELECT * FROM users WHERE id = ?", user_id)
+
+    # 4. Generate session token and set cookie
+    token = secrets.token_hex(32)
+    expires = (datetime.now(timezone.utc) + timedelta(days=SESSION_DAYS)).isoformat()
+    insert('sessions', {
+        'token': token,
+        'user_id': user['id'],
+        'created_at': now_iso(),
+        'expires_at': expires,
+    })
+
+    import os
+    response.set_cookie(
+        key="gm_session",
+        value=token,
+        max_age=SESSION_DAYS * 86400,
+        httponly=True,
+        samesite="lax",
+        secure=os.getenv("COOKIE_SECURE", "").lower() == "true",
+        path="/"
+    )
+
+    try:
+        from app.lib.audit import log_audit
+        log_audit(
+            merchant_id=merchant_id,
+            action="user_registered",
+            actor=f"user:{user['id']}",
+            entity="users",
+            details={"email": user["email"], "role": user["role"], "store": store_name}
+        )
+    except Exception:
+        pass
+
+    return {
+        "ok": True,
+        "message": "Account created successfully.",
+        "user": {
+            "id": user['id'],
+            "name": user['name'],
+            "email": user['email'],
+            "role": user['role'],
+            "merchant_id": merchant_id,
             "role_label": ROLE_LABELS.get(user['role'], user['role']),
         }
     }

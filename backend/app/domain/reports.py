@@ -68,6 +68,16 @@ def stock_value(merchant_id: int, as_of: str) -> Dict[str, Any]:
         "FROM products p WHERE p.merchant_id = ?",
         as_of, merchant_id
     )
+    # Single-roundtrip price prefetch (compatible with both PostgreSQL and SQLite)
+    price_rows = all(
+        "SELECT product_id, purchase_price "
+        "FROM product_price_history "
+        "WHERE merchant_id = ? AND effective_from <= ? "
+        "ORDER BY product_id, effective_from ASC, id ASC",
+        merchant_id, as_of
+    )
+    price_by_prod = {pr['product_id']: pr['purchase_price'] for pr in price_rows}
+
     on_hand = 0
     in_transit = 0
     unvalued_prods = 0
@@ -78,12 +88,16 @@ def stock_value(merchant_id: int, as_of: str) -> Dict[str, Any]:
         transit = int(r['in_transit'])
         if not qty and not transit:
             continue
-        c = cost_at(r['id'], as_of)
-        if not c:
-            unvalued_prods += 1
-            unvalued_units += qty + transit
-            continue
-        price = c['purchase_price']
+        price = price_by_prod.get(r['id'])
+        if price is None:
+            c = cost_at(r['id'], as_of)
+            if not c:
+                unvalued_prods += 1
+                unvalued_units += qty + transit
+                continue
+            price = c['purchase_price']
+            price_by_prod[r['id']] = price
+
         on_hand += qty * price
         in_transit += transit * price
 

@@ -126,6 +126,42 @@ export interface ActionAlerts {
   courier_settlements_pending: number;
 }
 
+export interface PlatformUser {
+  id: number;
+  name: string;
+  email: string | null;
+  whatsapp: string | null;
+  role: UserRole;
+  role_label: string;
+  merchant_id: number;
+  merchant_name: string;
+  merchant_status?: 'active' | 'paused';
+  is_active: boolean;
+  active_sessions_count: number;
+  last_active: string | null;
+  last_action?: string | null;
+  created_at: string;
+}
+
+export interface PlatformUsersSummary {
+  total_users: number;
+  active_users: number;
+  inactive_users: number;
+  active_percentage: number;
+  roles: {
+    super_admin: number;
+    admin: number;
+    agency_owner: number;
+    accountant: number;
+  };
+  total_merchants: number;
+}
+
+export interface PlatformUsersResponse {
+  summary: PlatformUsersSummary;
+  users: PlatformUser[];
+}
+
 export interface DashboardData {
   range: { from: string; to: string; label: string };
   pnl: PnLReport;
@@ -141,6 +177,11 @@ export interface DashboardData {
     orders_in_transit: number;
     returned_orders: number;
     courier_accounts_count: number;
+    delivered_orders?: number;
+    gross_margin_pct?: number;
+    settled_orders?: number;
+    reconciled_orders?: number;
+    misc_expenses?: number;
   };
   pipeline: PipelineStage[];
   today_deliveries: Order[];
@@ -150,5 +191,15 @@ export interface DashboardData {
     meta: boolean;
     whatsapp: boolean;
     supabase: boolean;
+  };
+  cash?: {
+    as_of: string;
+    cash_in_hand: number;
+    cash_accounts: Array<{ id: number; name: string; kind: string; balance: number }>;
+    held_at_couriers: number;
+    claims_against_couriers: number;
+    owed_to_suppliers: number;
+    stock: { total: number; on_hand: number; in_transit: number; unvalued_products: number; unvalued_units: number };
+    net_liquid: number;
   };
 }

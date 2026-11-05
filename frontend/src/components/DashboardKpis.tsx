@@ -16,24 +16,33 @@ interface DashboardKpisProps {
     orders_in_transit: number;
     returned_orders: number;
     courier_accounts_count: number;
+    delivered_orders?: number;
+    gross_margin_pct?: number;
+    settled_orders?: number;
+    reconciled_orders?: number;
+    misc_expenses?: number;
   };
 }
 
 export function DashboardKpis({ kpis }: DashboardKpisProps) {
+  const delivered = kpis.delivered_orders ?? 0;
+  const grossMarginPct = kpis.gross_margin_pct ?? 0;
+  const settled = kpis.settled_orders ?? 0;
+
   const cards = [
     {
       title: 'Delivered sales',
       value: formatTaka(kpis.delivered_sales),
-      badge: '55.6%',
+      badge: `${(kpis.delivery_rate * 100).toFixed(1)}% delivered`,
       badgeType: 'green',
-      subtext: '5 orders delivered',
+      subtext: `${delivered} orders delivered`,
       note: 'Revenue recognized only on confirmed delivery',
       isHero: false,
     },
     {
       title: 'Gross profit',
       value: formatTaka(kpis.gross_profit),
-      badge: '42.4% margin',
+      badge: `${grossMarginPct.toFixed(1)}% margin`,
       badgeType: 'green',
       subtext: 'Revenue minus COGS',
       note: 'Unit purchase costs matched to sold items',
@@ -43,16 +52,16 @@ export function DashboardKpis({ kpis }: DashboardKpisProps) {
       title: 'Net profit',
       value: formatTaka(kpis.net_profit),
       badge: kpis.net_profit < 0 ? 'Net loss' : 'Net profit',
-      badgeType: kpis.net_profit < 0 ? 'red' : 'green',
+      badgeType: kpis.net_profit < 0 ? 'muted' : 'green',
       subtext: 'After ads, rent & freight',
-      valueColor: kpis.net_profit < 0 ? 'text-[#B82E2E]' : 'text-emerald-700',
+      valueColor: 'text-[#025033]',
       note: 'Operating costs deducted in real-time',
       isHero: false,
     },
     {
       title: 'Orders placed',
       value: kpis.orders_placed.toString(),
-      badge: '5 done',
+      badge: `${delivered} done`,
       badgeType: 'neutral',
       subtext: `${kpis.orders_in_transit} in transit`,
       note: 'Placed orders never touch revenue before delivery',
@@ -62,8 +71,8 @@ export function DashboardKpis({ kpis }: DashboardKpisProps) {
       title: 'Delivery rate',
       value: `${(kpis.delivery_rate * 100).toFixed(1)}%`,
       badge: `${kpis.returned_orders} return`,
-      badgeType: 'amber',
-      subtext: 'Successful door deliveries',
+      badgeType: 'muted',
+      subtext: `${settled} COD settled`,
       note: 'Returns cost courier fees in both directions',
       isHero: false,
     },
@@ -72,7 +81,7 @@ export function DashboardKpis({ kpis }: DashboardKpisProps) {
       value: formatTaka(kpis.held_at_couriers),
       badge: 'COD pending',
       badgeType: 'neutral',
-      subtext: `${kpis.courier_accounts_count} courier accounts`,
+      subtext: `${kpis.courier_accounts_count} couriers holding money`,
       note: 'Money collected by Steadfast & Pathao awaiting bank settlement',
       isHero: false,
     },
@@ -80,7 +89,7 @@ export function DashboardKpis({ kpis }: DashboardKpisProps) {
       title: 'Net margin',
       value: `${kpis.net_margin_pct.toFixed(1)}%`,
       badge: kpis.net_margin_pct < 0 ? 'Loss' : 'Profit',
-      badgeType: 'neutral',
+      badgeType: 'hero',
       subtext: kpis.net_margin_pct < 0 ? 'Operating at loss' : 'Healthy profitability',
       isHero: true,
       note: 'Net margin on recognized sales',
@@ -97,27 +106,25 @@ export function DashboardKpis({ kpis }: DashboardKpisProps) {
             key={idx}
             className={`min-h-[155px] p-4 sm:p-5 rounded-2xl border transition shadow-2xs flex flex-col justify-between relative group ${
               isHero
-                ? 'bg-[#E7FA53] border-[#D5EB38] text-stone-900'
-                : 'bg-white border-[#E8E4DA] text-stone-900 hover:border-stone-400/80 hover:shadow-xs'
+                ? 'bg-[#025033] border-[#00432C] text-[#FFFFFF]'
+                : 'bg-[#FFFFFF] border-[#E5EAE7] text-[#025033] hover:border-[#3A8067] hover:shadow-xs'
             }`}
           >
             {/* Top row: Title + Badge */}
             <div className="flex items-start justify-between gap-1.5">
-              <span className="text-xs font-semibold text-stone-600 tracking-tight leading-snug">
+              <span className={`text-xs font-semibold tracking-tight leading-snug ${isHero ? 'text-[#CAE4D8]' : 'text-[#3A8067]'}`}>
                 {c.title}
               </span>
               {c.badge && (
                 <span
                   className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${
                     isHero
-                      ? 'bg-black/10 text-stone-900'
+                      ? 'bg-[#05572F] text-[#CAE4D8] border border-[#3A8067]'
                       : c.badgeType === 'green'
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
-                      : c.badgeType === 'red'
-                      ? 'bg-red-50 text-red-700 border border-red-200/60'
-                      : c.badgeType === 'amber'
-                      ? 'bg-amber-50 text-amber-800 border border-amber-200/60'
-                      : 'bg-stone-100 text-stone-600 border border-stone-200'
+                      ? 'bg-[#E6F7EF] text-[#025033] border border-[#CAE4D8]'
+                      : c.badgeType === 'muted'
+                      ? 'bg-[#CAE4D8] text-[#025033] border border-[#3A8067]'
+                      : 'bg-[#FAFCF9] text-[#025033] border border-[#E5EAE7]'
                   }`}
                 >
                   {c.badge}
@@ -129,19 +136,21 @@ export function DashboardKpis({ kpis }: DashboardKpisProps) {
             <div className="my-2">
               <div
                 className={`text-xl sm:text-2xl font-black tracking-tight leading-tight ${
-                  c.valueColor ? c.valueColor : 'text-stone-900'
+                  isHero ? 'text-[#FFFFFF]' : c.valueColor ? c.valueColor : 'text-[#025033]'
                 }`}
               >
                 {c.value}
               </div>
             </div>
 
-            {/* Bottom Row: Descriptive Subtext + Mini Icon with generous line-height */}
-            <div className="mt-auto pt-2 border-t border-black/5 flex items-center justify-between text-xs text-stone-500 font-medium min-h-[26px]">
-              <span className={`text-[11px] truncate leading-tight ${isHero ? 'text-stone-700 font-semibold' : 'text-stone-500'}`}>
+            {/* Bottom Row: Descriptive Subtext + Mini Icon */}
+            <div className={`mt-auto pt-2 border-t flex items-center justify-between text-xs font-medium min-h-[26px] ${
+              isHero ? 'border-[#05572F] text-[#CAE4D8]' : 'border-[#E5EAE7] text-[#3A8067]'
+            }`}>
+              <span className={`text-[11px] truncate leading-tight ${isHero ? 'text-[#CAE4D8] font-semibold' : 'text-[#3A8067]'}`}>
                 {c.subtext}
               </span>
-              <div className="opacity-40 group-hover:opacity-80 transition shrink-0 ml-1">
+              <div className="opacity-50 group-hover:opacity-100 transition shrink-0 ml-1">
                 <BarChartIcon className="w-3.5 h-3.5" />
               </div>
             </div>

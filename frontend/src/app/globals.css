@@ -3,13 +3,13 @@
 @tailwind utilities;
 
 :root {
-  --background: #FAF8F5;
-  --foreground: #1c1917;
+  --background: #FAFCF9;
+  --foreground: #025033;
 }
 
 body {
-  color: #1c1917;
-  background-color: #FAF8F5;
+  color: #025033;
+  background-color: #E6F7EF;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 }
 

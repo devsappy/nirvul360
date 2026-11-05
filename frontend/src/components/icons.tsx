@@ -291,3 +291,84 @@ export function DownloadCloudIcon({ className = "w-4 h-4" }: IconProps) {
     </svg>
   );
 }
+
+export function UsersIcon({ className = "w-4 h-4" }: IconProps) {
+  return (
+    <svg width="1em" height="1em" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+export function UserCheckIcon({ className = "w-4 h-4" }: IconProps) {
+  return (
+    <svg width="1em" height="1em" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <polyline points="16 11 18 13 22 9" />
+    </svg>
+  );
+}
+
+export function ActivityIcon({ className = "w-4 h-4" }: IconProps) {
+  return (
+    <svg width="1em" height="1em" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+    </svg>
+  );
+}
+
+export function PosIcon({ className = "w-4 h-4" }: IconProps) {
+  return (
+    <svg width="1em" height="1em" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="18" height="12" x="3" y="4" rx="2" />
+      <line x1="3" x2="21" y1="10" y2="10" />
+      <line x1="7" x2="7.01" y1="14" y2="14" />
+      <line x1="11" x2="11.01" y1="14" y2="14" />
+      <line x1="15" x2="15.01" y1="14" y2="14" />
+      <path d="M2 20h20" />
+    </svg>
+  );
+}
+
+export function ReceiptIcon({ className = "w-4 h-4" }: IconProps) {
+  return (
+    <svg width="1em" height="1em" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
+      <path d="M8 7h8" />
+      <path d="M8 11h8" />
+      <path d="M8 15h6" />
+    </svg>
+  );
+}
+
+export function ShoppingCartIcon({ className = "w-4 h-4" }: IconProps) {
+  return (
+    <svg width="1em" height="1em" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="8" cy="21" r="1" />
+      <circle cx="19" cy="21" r="1" />
+      <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+    </svg>
+  );
+}
+
+export function MinusIcon({ className = "w-4 h-4" }: IconProps) {
+  return (
+    <svg width="1em" height="1em" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12h14" />
+    </svg>
+  );
+}
+
+export function TrashIcon({ className = "w-4 h-4" }: IconProps) {
+  return (
+    <svg width="1em" height="1em" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6h18" />
+      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+    </svg>
+  );
+}

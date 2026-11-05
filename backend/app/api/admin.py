@@ -32,6 +32,112 @@ class CreateTenantInput(BaseModel):
 class PauseTenantInput(BaseModel):
     reason: Optional[str] = "Subscription payment overdue"
 
+def to_iso_str(val: Any) -> Optional[str]:
+    if val is None:
+        return None
+    if hasattr(val, "isoformat"):
+        return val.isoformat()
+    return str(val)
+
+@router.get("/users")
+async def list_platform_users(current: Dict[str, Any] = Depends(require_admin)):
+    """
+    Platform-wide user analytics & directory for Super Admin:
+    - total users count
+    - active users count (users with valid active unexpired sessions)
+    - inactive users count
+    - role breakdown
+    - full list of users with active status, last active timestamp, merchant organization
+    """
+    users_raw = all("""
+        SELECT 
+            u.id, u.merchant_id, u.name, u.email, u.whatsapp, u.role, u.created_at,
+            m.name as merchant_name, m.status as merchant_status
+        FROM users u
+        LEFT JOIN merchants m ON u.merchant_id = m.id
+        ORDER BY u.id ASC
+    """)
+
+    # Active sessions in the system
+    now = now_iso()
+    active_sessions = all("""
+        SELECT user_id, COUNT(*) as session_count, MAX(created_at) as latest_session
+        FROM sessions
+        WHERE expires_at > ?
+        GROUP BY user_id
+    """, now)
+    session_map = {row["user_id"]: row for row in active_sessions}
+
+    # Latest activity from audit log
+    audits = all("""
+        SELECT a.actor, a.action, a.at
+        FROM audit_log a
+        INNER JOIN (
+            SELECT actor, MAX(id) as max_id
+            FROM audit_log
+            WHERE actor LIKE ?
+            GROUP BY actor
+        ) latest ON a.id = latest.max_id
+    """, "user:%")
+    audit_map = {row["actor"]: row for row in audits}
+
+    formatted_users = []
+    for u in users_raw:
+        u_id = u["id"]
+        sess = session_map.get(u_id)
+        is_active = sess is not None and sess.get("session_count", 0) > 0
+        active_count = sess.get("session_count", 0) if sess else 0
+
+        audit_entry = audit_map.get(f"user:{u_id}")
+        last_action = audit_entry.get("action") if audit_entry else None
+        audit_time = audit_entry.get("at") if audit_entry else None
+        sess_time = sess.get("latest_session") if sess else None
+
+        created_iso = to_iso_str(u["created_at"])
+        last_active = to_iso_str(audit_time) or to_iso_str(sess_time) or created_iso
+
+        formatted_users.append({
+            "id": u_id,
+            "name": u["name"],
+            "email": u["email"],
+            "whatsapp": u["whatsapp"],
+            "role": u["role"],
+            "role_label": ROLE_LABELS.get(u["role"], u["role"]),
+            "merchant_id": u["merchant_id"],
+            "merchant_name": u["merchant_name"] or ("Platform Global" if u["role"] in ("super_admin", "admin") else f"Store #{u['merchant_id']}"),
+            "merchant_status": u["merchant_status"] or "active",
+            "is_active": is_active,
+            "active_sessions_count": active_count,
+            "last_active": last_active,
+            "last_action": last_action,
+            "created_at": created_iso,
+        })
+
+    total_users = len(formatted_users)
+    active_users = sum(1 for u in formatted_users if u["is_active"])
+    inactive_users = total_users - active_users
+
+    roles_breakdown = {
+        "super_admin": sum(1 for u in formatted_users if u["role"] == "super_admin"),
+        "admin": sum(1 for u in formatted_users if u["role"] == "admin"),
+        "agency_owner": sum(1 for u in formatted_users if u["role"] in ("agency_owner", "owner")),
+        "accountant": sum(1 for u in formatted_users if u["role"] == "accountant"),
+    }
+
+    unique_merchants = len(set(u["merchant_id"] for u in formatted_users if u["merchant_id"]))
+
+    return {
+        "summary": {
+            "total_users": total_users,
+            "active_users": active_users,
+            "inactive_users": inactive_users,
+            "active_percentage": round((active_users / total_users * 100), 1) if total_users > 0 else 0.0,
+            "roles": roles_breakdown,
+            "total_merchants": unique_merchants,
+        },
+        "users": formatted_users,
+    }
+
 @router.get("/tenants")
 async def list_tenants(current: Dict[str, Any] = Depends(require_admin)):
     """

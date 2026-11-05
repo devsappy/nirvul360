@@ -10,15 +10,20 @@ import { DeliveriesList } from '@/components/DeliveriesList';
 import { WhatsAppActivityCard } from '@/components/WhatsAppActivityCard';
 import { ActionItemsCard } from '@/components/ActionItemsCard';
 import { PnLTable } from '@/components/PnLTable';
+import { MoneyTrackerCard } from '@/components/MoneyTrackerCard';
+import { MiscExpenseCard } from '@/components/MiscExpenseCard';
 import { OrdersView } from '@/components/OrdersView';
 import { ProductsView } from '@/components/ProductsView';
+import { PosView } from '@/components/PosView';
 import { MoneyView } from '@/components/MoneyView';
+import { SettlementsView } from '@/components/SettlementsView';
 import { IntegrationsModal } from '@/components/IntegrationsModal';
 import { ExpenseModal } from '@/components/ExpenseModal';
 import { PurchaseModal } from '@/components/PurchaseModal';
 import { WhatsAppDrawer } from '@/components/WhatsAppDrawer';
 import { DeveloperCockpit } from '@/components/DeveloperCockpit';
 import { TenantSwitcherModal } from '@/components/TenantSwitcherModal';
+import { SuperAdminUsersView } from '@/components/SuperAdminUsersView';
 import { User, DashboardData, Order, Product, CashAccount } from '@/types';
 import { api } from '@/lib/api';
 import { realtime } from '@/lib/events';
@@ -29,7 +34,7 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [merchant, setMerchant] = useState<{ id: number; name: string; status?: 'active' | 'paused'; paused_reason?: string | null } | null>(null);
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
-  const [timeRange, setTimeRange] = useState<'month' | 'quarter' | 'year'>('month');
+  const [timeRange, setTimeRange] = useState<'month' | 'last30' | 'quarter' | 'year'>('month');
   const [liveStatus, setLiveStatus] = useState<'connected' | 'connecting' | 'offline'>('connecting');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -53,13 +58,36 @@ export default function Home() {
     setTimeout(() => setToastMessage(null), 5000);
   };
 
+  const rangeFor = (range: 'month' | 'last30' | 'quarter' | 'year'): { from: string; to: string } => {
+    const now = new Date();
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    let from: Date;
+    if (range === 'month') from = new Date(now.getFullYear(), now.getMonth(), 1);
+    else if (range === 'last30') from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    else if (range === 'quarter') from = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+    else from = new Date(now.getFullYear(), 0, 1);
+    return { from: fmt(from), to: fmt(now) };
+  };
+
   const loadData = useCallback(async () => {
     try {
-      const [dashRes, ordRes, prodRes, moneyRes] = await Promise.all([
-        api.get<DashboardData>('/api/dashboard'),
-        api.get<any>('/api/orders'),
-        api.get<any>('/api/products'),
+      const r = rangeFor(timeRange);
+      // Fetch dashboard & money first for instant screen render
+      const [dashRes, moneyRes] = await Promise.all([
+        api.get<DashboardData>(`/api/dashboard?from=${r.from}&to=${r.to}`),
         api.get<{ entries: any[]; cash: CashAccount[] }>('/api/money'),
+      ]);
+
+      setDashboard(dashRes);
+      setCashAccounts(moneyRes?.cash || []);
+      setRecentEntries(moneyRes?.entries || []);
+      setLoading(false);
+
+      // Load orders and products concurrently without blocking dashboard display
+      const [ordRes, prodRes] = await Promise.all([
+        api.get<any>('/api/orders').catch(() => ({ rows: [] })),
+        api.get<any>('/api/products').catch(() => []),
       ]);
 
       const orderList = Array.isArray(ordRes)
@@ -73,11 +101,8 @@ export default function Home() {
         ? prodRes.rows
         : [];
 
-      setDashboard(dashRes);
       setOrders(orderList);
       setProducts(productList);
-      setCashAccounts(moneyRes?.cash || []);
-      setRecentEntries(moneyRes?.entries || []);
     } catch (err: any) {
       if (err.status === 401) {
         setUser(null);
@@ -86,19 +111,24 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, [router, timeRange]);
 
   // Check auth session
   useEffect(() => {
+    let mounted = true;
     api
       .get<{ user: User; merchant: { id: number; name: string; status?: 'active' | 'paused'; paused_reason?: string | null } }>('/api/me')
       .then((res) => {
+        if (!mounted) return;
         if (res?.user) {
           setUser(res.user);
           if (res?.merchant) {
             setMerchant(res.merchant);
           }
-          if (res?.merchant?.status === 'paused' && res.user.role !== 'super_admin' && res.user.role !== 'admin') {
+          if (res.user.role === 'super_admin') {
+            setCurrentTab('users_overview');
+            setLoading(false);
+          } else if (res?.merchant?.status === 'paused' && res.user.role !== 'admin') {
             setLoading(false);
           } else {
             loadData();
@@ -108,8 +138,13 @@ export default function Home() {
         }
       })
       .catch(() => {
+        if (!mounted) return;
         router.replace('/login');
       });
+
+    return () => {
+      mounted = false;
+    };
   }, [router, loadData]);
 
   const handleInspectTenant = async (merchantId: number, merchantName: string) => {
@@ -151,7 +186,9 @@ export default function Home() {
     // Hot-update data on any ledger or order event!
     const unsubEvents = realtime.subscribe((event) => {
       console.log('Realtime event received:', event);
-      loadData();
+      if (user.role !== 'super_admin') {
+        loadData();
+      }
     });
 
     return () => {
@@ -183,9 +220,9 @@ export default function Home() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#FAF8F5] flex flex-col items-center justify-center gap-3">
-        <div className="w-8 h-8 rounded-full border-2 border-stone-300 border-t-stone-900 animate-spin" />
-        <span className="text-xs font-semibold text-stone-500">Checking authentication...</span>
+      <div className="min-h-screen bg-[#E6F7EF] flex flex-col items-center justify-center gap-3">
+        <div className="w-8 h-8 rounded-full border-2 border-[#CAE4D8] border-t-[#025033] animate-spin" />
+        <span className="text-xs font-semibold text-[#3A8067]">Checking authentication...</span>
       </div>
     );
   }
@@ -193,55 +230,55 @@ export default function Home() {
   // Account Suspended Screen for Tenant Users (Agency Owner / Accountant)
   if (merchant?.status === 'paused' && user.role !== 'super_admin' && user.role !== 'admin') {
     return (
-      <div className="min-h-screen bg-[#F5F2EB] flex flex-col items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-stone-200 shadow-xl flex flex-col items-center text-center gap-5 animate-in fade-in zoom-in-95 duration-200">
-          <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center text-3xl border border-rose-100 shadow-xs">
+      <div className="min-h-screen bg-[#E6F7EF] flex flex-col items-center justify-center p-4">
+        <div className="max-w-md w-full bg-[#FFFFFF] rounded-3xl p-8 border border-[#E5EAE7] shadow-xl flex flex-col items-center text-center gap-5 animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-16 h-16 rounded-2xl bg-[#E6F7EF] text-[#025033] flex items-center justify-center text-3xl border border-[#CAE4D8]">
             ⏸️
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600 bg-rose-50 px-3 py-1 rounded-full border border-rose-200 w-fit mx-auto">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#025033] bg-[#E6F7EF] px-3 py-1 rounded-full border border-[#CAE4D8] w-fit mx-auto">
               Account Suspended
             </span>
-            <h1 className="text-xl font-black text-stone-900 mt-1">
+            <h1 className="text-xl font-black text-[#025033] mt-1">
               Subscription Payment Overdue
             </h1>
-            <p className="text-xs text-stone-600">
-              Access to <strong className="text-stone-900">{merchant.name}</strong> is temporarily paused due to an outstanding subscription invoice.
+            <p className="text-xs text-[#3A8067]">
+              Access to <strong className="text-[#025033]">{merchant.name}</strong> is temporarily paused due to an outstanding subscription invoice.
             </p>
           </div>
 
-          <div className="w-full bg-[#FAF8F5] border border-stone-200 rounded-2xl p-4 text-left flex flex-col gap-2.5 text-xs">
+          <div className="w-full bg-[#FAFCF9] border border-[#E5EAE7] rounded-2xl p-4 text-left flex flex-col gap-2.5 text-xs">
             <div className="flex items-center justify-between">
-              <span className="text-stone-400 font-medium">Store Account</span>
-              <span className="font-bold text-stone-800">{merchant.name} (#{merchant.id})</span>
+              <span className="text-[#3A8067] font-medium">Store Account</span>
+              <span className="font-bold text-[#025033]">{merchant.name} (#{merchant.id})</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-stone-400 font-medium">Your Role</span>
-              <span className="font-semibold text-stone-800">{user.role_label}</span>
+              <span className="text-[#3A8067] font-medium">Your Role</span>
+              <span className="font-semibold text-[#025033]">{user.role_label}</span>
             </div>
-            <div className="pt-2 border-t border-stone-200/60 flex flex-col gap-1">
-              <span className="text-stone-400 font-medium text-[11px]">Suspension Note:</span>
-              <span className="font-semibold text-rose-700 bg-rose-50/80 p-2.5 rounded-xl border border-rose-100 text-xs leading-relaxed">
+            <div className="pt-2 border-t border-[#E5EAE7] flex flex-col gap-1">
+              <span className="text-[#3A8067] font-medium text-[11px]">Suspension Note:</span>
+              <span className="font-semibold text-[#025033] bg-[#E6F7EF] p-2.5 rounded-xl border border-[#CAE4D8] text-xs leading-relaxed">
                 {merchant.paused_reason || 'Subscription payment overdue'}
               </span>
             </div>
           </div>
 
-          <p className="text-xs text-stone-500 max-w-sm leading-relaxed">
+          <p className="text-xs text-[#3A8067] max-w-sm leading-relaxed">
             Please contact the Gross Management Platform Super Administrator to settle the balance and restore immediate access.
           </p>
 
           <div className="w-full flex flex-col gap-2 pt-2">
             <button
               onClick={() => window.location.reload()}
-              className="w-full py-2.5 rounded-xl bg-stone-900 hover:bg-black text-white text-xs font-bold transition shadow-sm"
+              className="w-full py-2.5 rounded-xl bg-[#025033] hover:bg-[#00432C] text-[#FFFFFF] text-xs font-bold transition shadow-sm"
             >
               Check &amp; Refresh Status
             </button>
             <button
               onClick={handleSignOut}
-              className="w-full py-2.5 rounded-xl border border-stone-200 hover:bg-stone-50 text-stone-600 text-xs font-semibold transition"
+              className="w-full py-2.5 rounded-xl border border-[#E5EAE7] hover:bg-[#E6F7EF] text-[#3A8067] text-xs font-semibold transition"
             >
               Sign Out
             </button>
@@ -255,10 +292,10 @@ export default function Home() {
     ? (dashboard.alerts.stuck_parcels || 0) +
       (dashboard.alerts.short_settlements || 0) +
       (dashboard.alerts.missing_costs || 0)
-    : 7;
+    : 0;
 
   return (
-    <div className="flex min-h-screen bg-[#FAF8F5]">
+    <div className="flex min-h-screen bg-[#FAFCF9]">
       {/* 1. Left Sticky Navigation Sidebar */}
       <Sidebar
         currentTab={currentTab}
@@ -273,36 +310,38 @@ export default function Home() {
       />
 
       {/* 2. Main Content Area */}
-      <main className="flex-1 p-6 md:p-8 lg:p-10 max-w-7xl mx-auto flex flex-col gap-6 overflow-x-hidden">
-        {/* Header with Search & Controls */}
-        <Header
-          user={user}
-          timeRange={timeRange}
-          onTimeRangeChange={setTimeRange}
-          exceptionsCount={exceptionsCount}
-          onReviewExceptions={() => setCurrentTab('orders')}
-          onOpenExpenseModal={() => setExpenseModalOpen(true)}
-          onOpenPurchaseModal={() => setPurchaseModalOpen(true)}
-          onRefresh={loadData}
-        />
+      <main className="flex-1 p-6 md:p-8 lg:p-10 max-w-7xl mx-auto flex flex-col gap-6 overflow-x-hidden bg-[#FAFCF9]">
+        {/* Header with Search & Controls (for regular store users) */}
+        {user.role !== 'super_admin' && (
+          <Header
+            user={user}
+            timeRange={timeRange}
+            onTimeRangeChange={setTimeRange}
+            exceptionsCount={exceptionsCount}
+            onReviewExceptions={() => setCurrentTab('orders')}
+            onOpenExpenseModal={() => setExpenseModalOpen(true)}
+            onOpenPurchaseModal={() => setPurchaseModalOpen(true)}
+            onRefresh={loadData}
+          />
+        )}
 
         {/* Paused Tenant Warning Banner for Admins */}
-        {merchant?.status === 'paused' && (user.role === 'super_admin' || user.role === 'admin') && (
-          <div className="bg-rose-600 text-white rounded-2xl p-4 px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md border border-rose-700 animate-in fade-in slide-in-from-top-1">
+        {merchant?.status === 'paused' && user.role === 'admin' && (
+          <div className="bg-[#00432C] text-white rounded-2xl p-4 px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md border border-[#05572F] animate-in fade-in slide-in-from-top-1">
             <div className="flex items-center gap-3 text-xs">
               <span className="text-xl">⏸️</span>
               <div>
                 <span className="font-bold block tracking-wide">
                   TENANT ACCOUNT PAUSED: {merchant.name} (Staff Locked Out)
                 </span>
-                <span className="text-rose-100 text-[11px]">
+                <span className="text-[#CAE4D8] text-[11px]">
                   Reason: <strong>{merchant.paused_reason || 'Subscription payment overdue'}</strong>. Staff cannot access the dashboard until resumed.
                 </span>
               </div>
             </div>
             <button
               onClick={handleResumeCurrentTenant}
-              className="px-4 py-1.5 rounded-xl bg-white text-rose-700 hover:bg-rose-50 font-bold text-xs transition shrink-0 shadow-xs flex items-center gap-1.5"
+              className="px-4 py-1.5 rounded-xl bg-[#05572F] text-white hover:bg-[#025033] font-bold text-xs transition shrink-0 border border-[#CAE4D8] flex items-center gap-1.5"
             >
               <span>Resume Tenant Access</span>
               <span>▶️</span>
@@ -311,25 +350,25 @@ export default function Home() {
         )}
 
         {/* Developer Impersonation Oversight Banner */}
-        {(user.role === 'super_admin' || user.role === 'admin') && currentTab === 'dashboard' && (
-          <div className="bg-purple-950 text-purple-100 border border-purple-800 rounded-2xl p-3.5 px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+        {user.role === 'admin' && currentTab === 'dashboard' && (
+          <div className="bg-[#00432C] text-white border border-[#05572F] rounded-2xl p-3.5 px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
             <div className="flex items-center gap-3 text-xs">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#E5FF44] animate-pulse shrink-0" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#CAE4D8] animate-pulse shrink-0" />
               <span>
                 <strong>Developer Oversight Active:</strong> Currently inspecting live books &amp; dashboard for{' '}
-                <strong className="underline text-white font-bold">{merchant?.name || 'Artisan Wear Bangladesh'}</strong>.
+                <strong className="underline text-[#FFFFFF] font-bold">{merchant?.name || 'Artisan Wear Bangladesh'}</strong>.
               </span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={() => setTenantSwitcherOpen(true)}
-                className="px-3 py-1.5 rounded-xl bg-purple-900 hover:bg-purple-800 text-purple-200 text-xs font-semibold border border-purple-700 transition"
+                className="px-3 py-1.5 rounded-xl bg-[#05572F] hover:bg-[#025033] text-[#CAE4D8] text-xs font-semibold border border-[#3A8067] transition"
               >
                 Switch Tenant ▾
               </button>
               <button
                 onClick={() => setCurrentTab('admin_cockpit')}
-                className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition shadow-xs"
+                className="px-3 py-1.5 rounded-xl bg-[#025033] hover:bg-[#05572F] text-white text-xs font-bold transition border border-[#CAE4D8]"
               >
                 Exit to Developer Cockpit
               </button>
@@ -339,14 +378,14 @@ export default function Home() {
 
         {/* Real-time Toast Banner */}
         {toastMessage && (
-          <div className="p-3 bg-stone-900 text-white rounded-2xl flex items-center justify-between text-xs shadow-md animate-fade-in border border-stone-800">
+          <div className="p-3 bg-[#00432C] text-white rounded-2xl flex items-center justify-between text-xs shadow-md animate-fade-in border border-[#05572F]">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#E5FF44]" />
+              <span className="w-2 h-2 rounded-full bg-[#CAE4D8]" />
               <span>{toastMessage}</span>
             </div>
             <button
               onClick={() => setToastMessage(null)}
-              className="text-stone-400 hover:text-white text-xs px-2"
+              className="text-[#CAE4D8] hover:text-white text-xs px-2"
             >
               &times;
             </button>
@@ -354,11 +393,23 @@ export default function Home() {
         )}
 
         {/* Loading state placeholder */}
-        {loading && !dashboard ? (
-          <div className="py-20 flex flex-col items-center justify-center gap-3 text-stone-400">
-            <div className="w-8 h-8 rounded-full border-2 border-stone-300 border-t-stone-900 animate-spin" />
+        {loading && !dashboard && user.role !== 'super_admin' ? (
+          <div className="py-20 flex flex-col items-center justify-center gap-3 text-[#3A8067]">
+            <div className="w-8 h-8 rounded-full border-2 border-[#CAE4D8] border-t-[#025033] animate-spin" />
             <span className="text-xs font-medium">Loading ledger &amp; cash accounts...</span>
           </div>
+        ) : user.role === 'super_admin' ? (
+          /* SUPER ADMIN VIEW: Dedicated Users Overview & Tenant Cockpit, NO store dashboard */
+          <>
+            {currentTab === 'admin_cockpit' ? (
+              <DeveloperCockpit
+                onInspectTenant={handleInspectTenant}
+                activeMerchantId={merchant?.id}
+              />
+            ) : (
+              <SuperAdminUsersView onRefreshParent={loadData} />
+            )}
+          </>
         ) : (
           <>
             {/* View: Dashboard */}
@@ -368,18 +419,18 @@ export default function Home() {
                 {dashboard.kpis ? (
                   <DashboardKpis kpis={dashboard.kpis} />
                 ) : (
-                  <div className="p-4 bg-stone-100 rounded-2xl text-xs text-stone-500">Calculating KPIs...</div>
+                  <div className="p-4 bg-[#FAFCF9] border border-[#E5EAE7] rounded-2xl text-xs text-[#3A8067]">Calculating KPIs...</div>
                 )}
 
                 {/* Numbers You Can Trust Notice */}
-                <div className="bg-white border border-[#E8E4DA] rounded-2xl p-4 flex items-center justify-between text-xs text-stone-600 shadow-2xs">
+                <div className="bg-[#FFFFFF] border border-[#E5EAE7] rounded-2xl p-4 flex items-center justify-between text-xs text-[#3A8067] shadow-2xs">
                   <div className="flex items-center gap-2">
-                    <InfoIcon className="w-4 h-4 text-stone-700 shrink-0" />
+                    <InfoIcon className="w-4 h-4 text-[#025033] shrink-0" />
                     <span>
-                      <strong>Numbers you can trust:</strong> Profit only includes delivered orders. Product value is measured at versioned purchase cost.
+                      <strong className="text-[#025033]">Numbers you can trust:</strong> Profit only includes delivered orders. Product value is measured at versioned purchase cost.
                     </span>
                   </div>
-                  <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider hidden sm:inline">
+                  <span className="text-[10px] font-bold text-[#3A8067] uppercase tracking-wider hidden sm:inline">
                     Double-Entry Guaranteed
                   </span>
                 </div>
@@ -392,13 +443,24 @@ export default function Home() {
                   />
                 )}
 
-                {/* 3-Column Mid Section: Deliveries, WhatsApp Activity, Action Items */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                {/* Where the money is: full cash position from the ledger */}
+                <MoneyTrackerCard
+                  cash={dashboard.cash}
+                  onOpenMoneyTab={() => setCurrentTab('money')}
+                />
+
+                {/* Mid Section: Deliveries, Misc Expense Recorder, WhatsApp, Action Items */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-5">
                   <DeliveriesList
                     deliveries={dashboard.today_deliveries && dashboard.today_deliveries.length > 0 ? dashboard.today_deliveries : orders}
                     onViewAllOrders={() => setCurrentTab('orders')}
                     onOpenOrderModal={() => setCurrentTab('orders')}
                     onOpenExpenseModal={() => setExpenseModalOpen(true)}
+                  />
+                  <MiscExpenseCard
+                    entries={recentEntries}
+                    onRefresh={loadData}
+                    onSuccess={showToast}
                   />
                   <WhatsAppActivityCard onOpenSimulator={() => setWhatsAppOpen(true)} />
                   <ActionItemsCard
@@ -420,6 +482,7 @@ export default function Home() {
                 orders={orders}
                 onRefresh={loadData}
                 onOpenOrderModal={() => showToast('Order creation modal opened')}
+                showToast={showToast}
               />
             )}
 
@@ -430,6 +493,14 @@ export default function Home() {
                 onRefresh={loadData}
                 onOpenPurchaseModal={() => setPurchaseModalOpen(true)}
                 userRole={user?.role}
+              />
+            )}
+
+            {/* View: POS Offline Store Terminal */}
+            {currentTab === 'pos' && (
+              <PosView
+                user={user}
+                onRefresh={loadData}
               />
             )}
 
@@ -451,21 +522,30 @@ export default function Home() {
               />
             )}
 
-            {/* View: Needs Attention / Settlements */}
-            {(currentTab === 'attention' || currentTab === 'settlements' || currentTab === 'settings') && (
-              <div className="bg-white border border-[#E8E4DA] rounded-2xl p-6 shadow-2xs flex flex-col gap-4">
-                <h2 className="text-base font-bold text-stone-900 capitalize tracking-tight">
+            {/* View: Courier Settlements */}
+            {currentTab === 'settlements' && (
+              <SettlementsView
+                orders={orders}
+                onRefresh={loadData}
+                onOpenIntegrations={() => setIntegrationsOpen(true)}
+                showToast={showToast}
+              />
+            )}
+
+            {/* View: Needs Attention / Settings */}
+            {(currentTab === 'attention' || currentTab === 'settings') && (
+              <div className="bg-[#FFFFFF] border border-[#E5EAE7] rounded-2xl p-6 shadow-2xs flex flex-col gap-4">
+                <h2 className="text-base font-bold text-[#025033] capitalize tracking-tight">
                   {currentTab.replace('_', ' ')}
                 </h2>
-                <p className="text-xs text-stone-500">
-                  {currentTab === 'attention' && '7 exception items waiting for resolution: stuck parcels, short settlements, and uncosted products.'}
-                  {currentTab === 'settlements' && 'Courier settlements from Steadfast and Pathao ready for automated reconciliation.'}
-                  {currentTab === 'settings' && 'Merchant credentials, API webhooks, Supabase cloud sync, and 4-tier hierarchy user access.'}
+                <p className="text-xs text-[#3A8067]">
+                  {currentTab === 'attention' && 'Exception items waiting for resolution: stuck parcels, short settlements, and uncosted products.'}
+                  {currentTab === 'settings' && 'Merchant credentials, API webhooks, Supabase cloud sync, and user access.'}
                 </p>
                 <div className="pt-2">
                   <button
                     onClick={() => setCurrentTab('dashboard')}
-                    className="text-xs font-semibold bg-stone-900 text-white px-4 py-2 rounded-xl"
+                    className="text-xs font-semibold bg-[#025033] hover:bg-[#05572F] text-[#FFFFFF] px-4 py-2 rounded-xl transition-colors"
                   >
                     Return to Dashboard
                   </button>

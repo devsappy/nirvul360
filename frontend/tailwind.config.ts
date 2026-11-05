@@ -9,8 +9,19 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        background: "#FAFCF9",
+        foreground: "#025033",
+        forest: {
+          deep: "#025033",
+          dark: "#00432C",
+          emerald: "#05572F",
+          muted: "#3A8067",
+          soft: "#CAE4D8",
+          pale: "#E6F7EF",
+          offwhite: "#FAFCF9",
+          purewhite: "#FFFFFF",
+          lightgrey: "#E5EAE7",
+        },
       },
     },
   },

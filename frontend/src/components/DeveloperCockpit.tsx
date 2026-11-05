@@ -222,27 +222,25 @@ export function DeveloperCockpit({ onInspectTenant, activeMerchantId }: Develope
     <div className="flex flex-col gap-8 pb-16">
       
       {/* 1. Header Banner */}
-      <div className="bg-stone-900 text-white rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
-        
-        <div className="flex flex-col gap-2 relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-400/30 text-purple-300 text-[11px] font-bold tracking-wider uppercase w-fit">
-            <ShieldIcon className="w-3.5 h-3.5" />
+      <div className="bg-[#025033] text-[#FFFFFF] rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xl border border-[#00432C]">
+        <div className="flex flex-col gap-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#05572F] border border-[#3A8067] text-[#CAE4D8] text-[11px] font-bold tracking-wider uppercase w-fit">
+            <ShieldIcon className="w-3.5 h-3.5 text-[#CAE4D8]" />
             <span>Developer &amp; Platform Admin Cockpit</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#FFFFFF]">
             SaaS Multi-Tenant Monitoring Tower
           </h1>
-          <p className="text-xs sm:text-sm text-stone-300 font-medium max-w-xl">
+          <p className="text-xs sm:text-sm text-[#CAE4D8] font-medium max-w-xl">
             Monitor real-time user activities across all client organizations, review system telemetry, and inspect any tenant dashboard with 1 click.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 relative z-10">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={loadData}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold transition border border-white/10"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#05572F] hover:bg-[#00432C] text-[#FFFFFF] text-xs font-bold transition border border-[#3A8067]"
           >
             <RefreshIcon className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
@@ -250,9 +248,9 @@ export function DeveloperCockpit({ onInspectTenant, activeMerchantId }: Develope
           
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#E5FF44] hover:bg-[#d6f030] text-stone-950 text-xs font-bold transition shadow-md"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#CAE4D8] hover:bg-[#E6F7EF] text-[#025033] text-xs font-bold transition shadow-md border border-[#3A8067]"
           >
-            <PlusIcon className="w-3.5 h-3.5" />
+            <PlusIcon className="w-3.5 h-3.5 text-[#025033]" />
             <span>Onboard New Tenant</span>
           </button>
         </div>
@@ -260,14 +258,14 @@ export function DeveloperCockpit({ onInspectTenant, activeMerchantId }: Develope
 
       {/* Action Notice Notification */}
       {actionNotice && (
-        <div className="bg-stone-900 text-white rounded-2xl px-5 py-3 text-xs flex items-center justify-between shadow-lg border border-stone-800 animate-in fade-in slide-in-from-top-1">
+        <div className="bg-[#00432C] text-[#FFFFFF] rounded-2xl px-5 py-3 text-xs flex items-center justify-between shadow-lg border border-[#05572F] animate-in fade-in slide-in-from-top-1">
           <div className="flex items-center gap-2.5">
-            <span className="w-2 h-2 rounded-full bg-[#E5FF44] animate-pulse" />
-            <span className="font-medium">{actionNotice}</span>
+            <span className="w-2 h-2 rounded-full bg-[#CAE4D8] animate-pulse" />
+            <span className="font-medium text-[#FFFFFF]">{actionNotice}</span>
           </div>
           <button
             onClick={() => setActionNotice(null)}
-            className="text-stone-400 hover:text-white font-bold ml-4"
+            className="text-[#CAE4D8] hover:text-[#FFFFFF] font-bold ml-4"
           >
             &times;
           </button>
@@ -276,44 +274,48 @@ export function DeveloperCockpit({ onInspectTenant, activeMerchantId }: Develope
 
       {/* 2. Platform Telemetry Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white border border-[#E8E4DA] rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
-          <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Total SaaS Tenants</span>
+        <div className="bg-[#FFFFFF] border border-[#E5EAE7] rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
+          <span className="text-[11px] font-bold text-[#3A8067] uppercase tracking-wider">Total SaaS Tenants</span>
           <div className="my-2">
-            <span className="text-2xl sm:text-3xl font-black text-stone-900">{stats?.tenants_count || tenants.length}</span>
-            <span className="text-xs font-bold text-emerald-600 ml-2">Active</span>
+            <span className="text-2xl sm:text-3xl font-black text-[#025033]">{stats?.tenants_count || tenants.length}</span>
+            <span className="text-xs font-bold text-[#025033] ml-2">Active</span>
           </div>
-          <span className="text-[11px] text-stone-400">Stores on platform</span>
+          <span className="text-[11px] text-[#3A8067]">Stores on platform</span>
         </div>
 
-        <div className="bg-white border border-[#E8E4DA] rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
-          <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Total Users Registered</span>
+        <div className="bg-[#FFFFFF] border border-[#E5EAE7] rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
+          <span className="text-[11px] font-bold text-[#3A8067] uppercase tracking-wider">Total Users Registered</span>
           <div className="my-2">
-            <span className="text-2xl sm:text-3xl font-black text-stone-900">{stats?.users_count || 0}</span>
-            <span className="text-xs font-medium text-stone-500 ml-1.5">Across 4 tiers</span>
+            <span className="text-2xl sm:text-3xl font-black text-[#025033]">{stats?.users_count || 0}</span>
+            <span className="text-xs font-medium text-[#3A8067] ml-1.5">Across 4 tiers</span>
           </div>
-          <span className="text-[11px] text-stone-400">Super Admin &gt; Admin &gt; Owner &gt; Accountant</span>
+          <span className="text-[11px] text-[#3A8067]">Super Admin &gt; Admin &gt; Owner &gt; Accountant</span>
         </div>
 
-        <div className="bg-white border border-[#E8E4DA] rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
-          <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Platform Total GMV</span>
+        <div className="bg-[#FFFFFF] border border-[#E5EAE7] rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
+          <span className="text-[11px] font-bold text-[#3A8067] uppercase tracking-wider">Platform Total GMV</span>
           <div className="my-2">
-            <span className="text-2xl sm:text-3xl font-black text-stone-900">
+            <span className="text-2xl sm:text-3xl font-black text-[#025033]">
               {stats?.total_gmv ? formatBDT(stats.total_gmv) : '৳0'}
             </span>
           </div>
-          <span className="text-[11px] text-stone-400">{stats?.total_orders || 0} total orders tracked</span>
+          <span className="text-[11px] text-[#3A8067]">{stats?.total_orders || 0} total orders tracked</span>
         </div>
 
-        <div className="bg-white border border-[#E8E4DA] rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
-          <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Real-time Telemetry</span>
+        <div className="bg-[#FFFFFF] border border-[#E5EAE7] rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
+          <span className="text-[11px] font-bold text-[#3A8067] uppercase tracking-wider">Real-time Telemetry</span>
           <div className="my-2 flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-xl sm:text-2xl font-black text-stone-900">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#025033] animate-pulse" />
+            <span className="text-xl sm:text-2xl font-black text-[#025033]">
               {stats?.active_realtime_listeners ?? 1} Listeners
             </span>
           </div>
-          <span className="text-[11px] text-stone-400">
-            {stats?.supabase?.connected ? 'Supabase Cloud Connected' : 'Local SQLite + SSE Active'}
+          <span className="text-[11px] text-[#3A8067]">
+            {loading && !stats
+              ? 'Checking database connection...'
+              : stats?.supabase?.connected
+              ? 'Supabase Cloud (PostgreSQL) Connected'
+              : 'Local SQLite Fallback Active'}
           </span>
         </div>
       </div>
@@ -325,18 +327,18 @@ export function DeveloperCockpit({ onInspectTenant, activeMerchantId }: Develope
         <div className="lg:col-span-7 flex flex-col gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold text-stone-900">Registered SaaS Tenants</h2>
-              <p className="text-xs text-stone-500">Click &quot;View Dashboard&quot; to inspect any merchant as developer</p>
+              <h2 className="text-lg font-bold text-[#025033]">Registered SaaS Tenants</h2>
+              <p className="text-xs text-[#3A8067]">Click &quot;View Dashboard&quot; to inspect any merchant as developer</p>
             </div>
             
             <div className="relative min-w-[200px]">
-              <SearchIcon className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <SearchIcon className="w-3.5 h-3.5 text-[#3A8067] absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Search tenant or owner..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white border border-stone-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-stone-800 focus:outline-none focus:border-stone-900"
+                className="w-full bg-[#FFFFFF] border border-[#E5EAE7] rounded-xl pl-8 pr-3 py-1.5 text-xs text-[#025033] placeholder-[#3A8067] focus:outline-none focus:border-[#025033]"
               />
             </div>
           </div>
@@ -347,41 +349,41 @@ export function DeveloperCockpit({ onInspectTenant, activeMerchantId }: Develope
               return (
                 <div
                   key={t.id}
-                  className={`bg-white border rounded-2xl p-5 transition shadow-2xs flex flex-col gap-4 ${
-                    isCurrent ? 'border-purple-500 ring-2 ring-purple-100' : 'border-[#E8E4DA] hover:border-stone-400'
+                  className={`bg-[#FFFFFF] border rounded-2xl p-5 transition shadow-2xs flex flex-col gap-4 ${
+                    isCurrent ? 'border-[#025033] ring-2 ring-[#CAE4D8]' : 'border-[#E5EAE7] hover:border-[#3A8067]'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-stone-900 text-[#E5FF44] font-black text-xs flex items-center justify-center shrink-0">
+                      <div className="w-10 h-10 rounded-xl bg-[#025033] text-[#CAE4D8] font-black text-xs flex items-center justify-center shrink-0 border border-[#00432C]">
                         {t.name.split(' ').map((n) => n[0]).slice(0, 2).join('')}
                       </div>
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-extrabold text-stone-900 text-sm">{t.name}</span>
-                          <span className="text-[10px] text-stone-400 font-mono">#{t.id}</span>
+                          <span className="font-extrabold text-[#025033] text-sm">{t.name}</span>
+                          <span className="text-[10px] text-[#3A8067] font-mono">#{t.id}</span>
                           {isCurrent && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-200">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#05572F] text-[#FFFFFF] border border-[#3A8067]">
                               Active View
                             </span>
                           )}
                           {t.status === 'paused' ? (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200 flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#CAE4D8] text-[#025033] border border-[#3A8067] flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#025033] animate-pulse" />
                               Paused (Overdue)
                             </span>
                           ) : (
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#E6F7EF] text-[#025033] border border-[#CAE4D8] flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#025033]" />
                               Active
                             </span>
                           )}
                         </div>
-                        <span className="text-xs text-stone-500">
-                          Owner: <strong className="text-stone-700 font-semibold">{t.owner.name}</strong> ({t.owner.email})
+                        <span className="text-xs text-[#3A8067]">
+                          Owner: <strong className="text-[#025033] font-semibold">{t.owner.name}</strong> ({t.owner.email})
                         </span>
                         {t.status === 'paused' && t.paused_reason && (
-                          <div className="text-[11px] text-rose-700 bg-rose-50 border border-rose-100 rounded-lg px-2.5 py-0.5 mt-1 flex items-center gap-1.5 w-fit">
+                          <div className="text-[11px] text-[#025033] bg-[#E6F7EF] border border-[#CAE4D8] rounded-lg px-2.5 py-0.5 mt-1 flex items-center gap-1.5 w-fit">
                             <span>⏸️</span>
                             <span>Suspension Note: <strong>{t.paused_reason}</strong></span>
                           </div>
@@ -394,7 +396,7 @@ export function DeveloperCockpit({ onInspectTenant, activeMerchantId }: Develope
                         <button
                           onClick={() => handleResumeTenant(t)}
                           disabled={actionLoading}
-                          className="px-3 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs disabled:opacity-50"
+                          className="px-3 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1.5 bg-[#025033] hover:bg-[#05572F] text-[#FFFFFF] shadow-xs disabled:opacity-50"
                           title="Reactivate account and restore staff access"
                         >
                           <span>Resume Account</span>
@@ -407,7 +409,7 @@ export function DeveloperCockpit({ onInspectTenant, activeMerchantId }: Develope
                             setPauseReason('Subscription payment overdue');
                           }}
                           disabled={actionLoading}
-                          className="px-3 py-1.5 rounded-xl font-semibold text-xs transition flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 disabled:opacity-50"
+                          className="px-3 py-1.5 rounded-xl font-semibold text-xs transition flex items-center gap-1.5 bg-[#FAFCF9] hover:bg-[#E6F7EF] text-[#025033] border border-[#E5EAE7] disabled:opacity-50"
                           title="Pause dashboard if subscription payment is overdue"
                         >
                           <span>Pause Account</span>
@@ -419,8 +421,8 @@ export function DeveloperCockpit({ onInspectTenant, activeMerchantId }: Develope
                         onClick={() => onInspectTenant(t.id, t.name)}
                         className={`px-3.5 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1.5 ${
                           isCurrent
-                            ? 'bg-purple-600 text-white hover:bg-purple-700'
-                            : 'bg-stone-900 text-white hover:bg-stone-800'
+                            ? 'bg-[#00432C] text-[#FFFFFF] ring-1 ring-[#CAE4D8]'
+                            : 'bg-[#025033] text-[#FFFFFF] hover:bg-[#05572F]'
                         }`}
                       >
                         <span>{isCurrent ? 'Inspecting' : 'View Dashboard'}</span>
@@ -430,39 +432,39 @@ export function DeveloperCockpit({ onInspectTenant, activeMerchantId }: Develope
                   </div>
 
                   {/* Metrics & Badges */}
-                  <div className="grid grid-cols-3 gap-2 py-2 border-y border-stone-100 bg-[#FAF8F5] rounded-xl px-3 text-xs">
+                  <div className="grid grid-cols-3 gap-2 py-2 border-y border-[#E5EAE7] bg-[#FAFCF9] rounded-xl px-3 text-xs">
                     <div>
-                      <span className="text-[10px] text-stone-400 uppercase font-semibold block">Total Orders</span>
-                      <strong className="text-stone-900 font-bold">{t.metrics.total_orders}</strong>
-                      <span className="text-[10px] text-emerald-600 ml-1">({t.metrics.delivered_count} del)</span>
+                      <span className="text-[10px] text-[#3A8067] uppercase font-semibold block">Total Orders</span>
+                      <strong className="text-[#025033] font-bold">{t.metrics.total_orders}</strong>
+                      <span className="text-[10px] text-[#025033] ml-1">({t.metrics.delivered_count} del)</span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-stone-400 uppercase font-semibold block">Total GMV</span>
-                      <strong className="text-stone-900 font-bold">{formatBDT(t.metrics.total_gmv)}</strong>
+                      <span className="text-[10px] text-[#3A8067] uppercase font-semibold block">Total GMV</span>
+                      <strong className="text-[#025033] font-bold">{formatBDT(t.metrics.total_gmv)}</strong>
                     </div>
                     <div>
-                      <span className="text-[10px] text-stone-400 uppercase font-semibold block">Staff Users</span>
-                      <strong className="text-stone-900 font-bold">{t.user_counts.total} users</strong>
-                      <span className="text-[10px] text-stone-500 ml-1">({t.user_counts.accountants} acc)</span>
+                      <span className="text-[10px] text-[#3A8067] uppercase font-semibold block">Staff Users</span>
+                      <strong className="text-[#025033] font-bold">{t.user_counts.total} users</strong>
+                      <span className="text-[10px] text-[#3A8067] ml-1">({t.user_counts.accountants} acc)</span>
                     </div>
                   </div>
 
                   {/* Integrations & Last Active */}
-                  <div className="flex items-center justify-between text-[11px] text-stone-500">
+                  <div className="flex items-center justify-between text-[11px] text-[#3A8067]">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-stone-400">Integrations:</span>
-                      <span className={`px-2 py-0.5 rounded-md font-semibold ${t.integrations.courier ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-stone-100 text-stone-400'}`}>
+                      <span className="font-semibold text-[#3A8067]">Integrations:</span>
+                      <span className={`px-2 py-0.5 rounded-md font-semibold ${t.integrations.courier ? 'bg-[#E6F7EF] text-[#025033] border border-[#CAE4D8]' : 'bg-[#FAFCF9] text-[#3A8067] border border-[#E5EAE7]'}`}>
                         Courier
                       </span>
-                      <span className={`px-2 py-0.5 rounded-md font-semibold ${t.integrations.meta_ads ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-stone-100 text-stone-400'}`}>
+                      <span className={`px-2 py-0.5 rounded-md font-semibold ${t.integrations.meta_ads ? 'bg-[#E6F7EF] text-[#025033] border border-[#CAE4D8]' : 'bg-[#FAFCF9] text-[#3A8067] border border-[#E5EAE7]'}`}>
                         Meta Ads
                       </span>
-                      <span className={`px-2 py-0.5 rounded-md font-semibold ${t.integrations.whatsapp ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-stone-100 text-stone-400'}`}>
+                      <span className={`px-2 py-0.5 rounded-md font-semibold ${t.integrations.whatsapp ? 'bg-[#E6F7EF] text-[#025033] border border-[#CAE4D8]' : 'bg-[#FAFCF9] text-[#3A8067] border border-[#E5EAE7]'}`}>
                         WhatsApp Bot
                       </span>
                     </div>
 
-                    <span className="text-[10px] text-stone-400">
+                    <span className="text-[10px] text-[#3A8067]">
                       Active: {timeAgo(t.last_active)}
                     </span>
                   </div>
@@ -471,7 +473,7 @@ export function DeveloperCockpit({ onInspectTenant, activeMerchantId }: Develope
             })}
 
             {filteredTenants.length === 0 && (
-              <div className="bg-white border border-stone-200 rounded-2xl p-8 text-center text-xs text-stone-500">
+              <div className="bg-[#FFFFFF] border border-[#E5EAE7] rounded-2xl p-8 text-center text-xs text-[#3A8067]">
                 No tenants matched your search criteria.
               </div>
             )}
@@ -482,15 +484,15 @@ export function DeveloperCockpit({ onInspectTenant, activeMerchantId }: Develope
         <div className="lg:col-span-5 flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-stone-900">Platform Live Activity Feed</h2>
-              <p className="text-xs text-stone-500">Audit stream of what other users are doing</p>
+              <h2 className="text-lg font-bold text-[#025033]">Platform Live Activity Feed</h2>
+              <p className="text-xs text-[#3A8067]">Audit stream of what other users are doing</p>
             </div>
 
             {/* Filter Dropdown */}
             <select
               value={filterMerchant}
               onChange={(e) => setFilterMerchant(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-              className="bg-white border border-stone-200 rounded-xl px-2.5 py-1 text-xs text-stone-700 focus:outline-none"
+              className="bg-[#FFFFFF] border border-[#E5EAE7] rounded-xl px-2.5 py-1 text-xs text-[#025033] focus:outline-none focus:border-[#025033]"
             >
               <option value="all">All Merchants</option>
               {tenants.map((m) => (
@@ -501,7 +503,7 @@ export function DeveloperCockpit({ onInspectTenant, activeMerchantId }: Develope
             </select>
           </div>
 
-          <div className="bg-white border border-[#E8E4DA] rounded-2xl p-4 shadow-2xs flex flex-col divide-y divide-stone-100 max-h-[640px] overflow-y-auto">
+          <div className="bg-[#FFFFFF] border border-[#E5EAE7] rounded-2xl p-4 shadow-2xs flex flex-col divide-y divide-[#E5EAE7] max-h-[640px] overflow-y-auto">
             {filteredActivity.map((act) => {
               const detailsObj = act.details ? (() => {
                 try { return JSON.parse(act.details); } catch { return act.details; }
@@ -511,31 +513,31 @@ export function DeveloperCockpit({ onInspectTenant, activeMerchantId }: Develope
                 <div key={act.id} className="py-3 flex flex-col gap-1 first:pt-1 last:pb-1">
                   <div className="flex items-center justify-between text-[11px]">
                     <div className="flex items-center gap-1.5">
-                      <span className="font-bold text-stone-900">{act.actor}</span>
-                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-stone-100 text-stone-600 font-medium">
+                      <span className="font-bold text-[#025033]">{act.actor}</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#E6F7EF] text-[#025033] font-medium border border-[#CAE4D8]">
                         {act.merchant_name}
                       </span>
                     </div>
-                    <span className="text-[10px] text-stone-400">{timeAgo(act.at)}</span>
+                    <span className="text-[10px] text-[#3A8067]">{timeAgo(act.at)}</span>
                   </div>
 
-                  <div className="text-xs text-stone-700 font-medium flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-purple-500 shrink-0" />
-                    <span className="font-semibold text-stone-800 capitalize">
+                  <div className="text-xs text-[#025033] font-medium flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#025033] shrink-0" />
+                    <span className="font-semibold text-[#025033] capitalize">
                       {act.action.replace(/_/g, ' ')}
                     </span>
                     {detailsObj && typeof detailsObj === 'object' && detailsObj.note && (
-                      <span className="text-stone-500">&bull; {detailsObj.note}</span>
+                      <span className="text-[#3A8067]">&bull; {detailsObj.note}</span>
                     )}
                     {detailsObj && typeof detailsObj === 'object' && detailsObj.amount && (
-                      <span className="text-stone-900 font-bold">
+                      <span className="text-[#025033] font-bold">
                         ৳{detailsObj.amount.toLocaleString()}
                       </span>
                     )}
                   </div>
 
                   {detailsObj && typeof detailsObj === 'object' && detailsObj.synced_orders && (
-                    <div className="text-[10px] text-stone-500 pl-3">
+                    <div className="text-[10px] text-[#3A8067] pl-3">
                       Courier sync: {detailsObj.synced_orders} orders updated, COD: ৳{(detailsObj.cod_collected / 100).toLocaleString()}
                     </div>
                   )}
@@ -544,7 +546,7 @@ export function DeveloperCockpit({ onInspectTenant, activeMerchantId }: Develope
             })}
 
             {filteredActivity.length === 0 && (
-              <div className="py-12 text-center text-xs text-stone-400">
+              <div className="py-12 text-center text-xs text-[#3A8067]">
                 No recent activity recorded for this tenant.
               </div>
             )}
@@ -555,32 +557,32 @@ export function DeveloperCockpit({ onInspectTenant, activeMerchantId }: Develope
 
       {/* Modal: Onboard New Tenant */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-stone-200 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+        <div className="fixed inset-0 z-50 bg-[#00432C]/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#FFFFFF] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#E5EAE7] flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-[#E5EAE7] pb-3">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-stone-900 text-[#E5FF44] flex items-center justify-center">
-                  <PlusIcon className="w-4 h-4" />
+                <div className="w-7 h-7 rounded-lg bg-[#025033] text-[#CAE4D8] flex items-center justify-center">
+                  <PlusIcon className="w-4 h-4 text-[#CAE4D8]" />
                 </div>
-                <h3 className="font-bold text-stone-900 text-sm">Onboard New SaaS Tenant</h3>
+                <h3 className="font-bold text-[#025033] text-sm">Onboard New SaaS Tenant</h3>
               </div>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="w-7 h-7 rounded-full hover:bg-stone-100 text-stone-400 flex items-center justify-center"
+                className="w-7 h-7 rounded-full hover:bg-[#E6F7EF] text-[#3A8067] flex items-center justify-center transition"
               >
                 &times;
               </button>
             </div>
 
             {createError && (
-              <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl font-medium">
+              <div className="p-3 bg-[#E6F7EF] border border-[#3A8067] text-[#025033] text-xs rounded-xl font-medium">
                 {createError}
               </div>
             )}
 
             <form onSubmit={handleCreateTenant} className="flex flex-col gap-3">
               <div>
-                <label className="block text-[11px] font-bold text-stone-600 uppercase mb-1">
+                <label className="block text-[11px] font-bold text-[#025033] uppercase mb-1">
                   Store / Brand Name
                 </label>
                 <input
@@ -589,12 +591,12 @@ export function DeveloperCockpit({ onInspectTenant, activeMerchantId }: Develope
                   value={newStoreName}
                   onChange={(e) => setNewStoreName(e.target.value)}
                   required
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2 text-xs text-stone-900 focus:outline-none focus:border-stone-900"
+                  className="w-full bg-[#FFFFFF] border border-[#E5EAE7] rounded-xl px-3 py-2 text-xs text-[#025033] placeholder-[#3A8067] focus:outline-none focus:border-[#025033]"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-stone-600 uppercase mb-1">
+                <label className="block text-[11px] font-bold text-[#025033] uppercase mb-1">
                   Agency Owner Name
                 </label>
                 <input
@@ -603,12 +605,12 @@ export function DeveloperCockpit({ onInspectTenant, activeMerchantId }: Develope
                   value={newOwnerName}
                   onChange={(e) => setNewOwnerName(e.target.value)}
                   required
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2 text-xs text-stone-900 focus:outline-none focus:border-stone-900"
+                  className="w-full bg-[#FFFFFF] border border-[#E5EAE7] rounded-xl px-3 py-2 text-xs text-[#025033] placeholder-[#3A8067] focus:outline-none focus:border-[#025033]"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-stone-600 uppercase mb-1">
+                <label className="block text-[11px] font-bold text-[#025033] uppercase mb-1">
                   Owner Email
                 </label>
                 <input
@@ -617,12 +619,12 @@ export function DeveloperCockpit({ onInspectTenant, activeMerchantId }: Develope
                   value={newOwnerEmail}
                   onChange={(e) => setNewOwnerEmail(e.target.value)}
                   required
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2 text-xs text-stone-900 focus:outline-none focus:border-stone-900"
+                  className="w-full bg-[#FFFFFF] border border-[#E5EAE7] rounded-xl px-3 py-2 text-xs text-[#025033] placeholder-[#3A8067] focus:outline-none focus:border-[#025033]"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-stone-600 uppercase mb-1">
+                <label className="block text-[11px] font-bold text-[#025033] uppercase mb-1">
                   Owner Initial Password
                 </label>
                 <input
@@ -630,12 +632,12 @@ export function DeveloperCockpit({ onInspectTenant, activeMerchantId }: Develope
                   value={newOwnerPassword}
                   onChange={(e) => setNewOwnerPassword(e.target.value)}
                   required
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2 text-xs text-stone-900 focus:outline-none focus:border-stone-900"
+                  className="w-full bg-[#FFFFFF] border border-[#E5EAE7] rounded-xl px-3 py-2 text-xs text-[#025033] placeholder-[#3A8067] focus:outline-none focus:border-[#025033]"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-stone-600 uppercase mb-1">
+                <label className="block text-[11px] font-bold text-[#025033] uppercase mb-1">
                   Owner WhatsApp / Phone (Optional)
                 </label>
                 <input
@@ -643,22 +645,22 @@ export function DeveloperCockpit({ onInspectTenant, activeMerchantId }: Develope
                   placeholder="88017XXXXXXXX"
                   value={newOwnerPhone}
                   onChange={(e) => setNewOwnerPhone(e.target.value)}
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2 text-xs text-stone-900 focus:outline-none focus:border-stone-900"
+                  className="w-full bg-[#FFFFFF] border border-[#E5EAE7] rounded-xl px-3 py-2 text-xs text-[#025033] placeholder-[#3A8067] focus:outline-none focus:border-[#025033]"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100 mt-2">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E5EAE7] mt-2">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 rounded-xl text-stone-600 hover:bg-stone-100 text-xs font-semibold"
+                  className="px-4 py-2 rounded-xl text-[#3A8067] hover:bg-[#E6F7EF] text-xs font-semibold transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={createLoading}
-                  className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-black text-white text-xs font-bold transition disabled:opacity-50"
+                  className="px-4 py-2 rounded-xl bg-[#025033] hover:bg-[#05572F] text-[#FFFFFF] text-xs font-bold transition disabled:opacity-50"
                 >
                   {createLoading ? 'Provisioning...' : 'Create Tenant'}
                 </button>
@@ -670,38 +672,38 @@ export function DeveloperCockpit({ onInspectTenant, activeMerchantId }: Develope
 
       {/* Modal: Pause Tenant Account */}
       {pauseModalTenant && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-stone-200 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+        <div className="fixed inset-0 z-50 bg-[#00432C]/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#FFFFFF] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#E5EAE7] flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-[#E5EAE7] pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-sm border border-rose-200">
+                <div className="w-8 h-8 rounded-xl bg-[#E6F7EF] text-[#025033] flex items-center justify-center text-sm border border-[#CAE4D8]">
                   ⏸️
                 </div>
                 <div>
-                  <h3 className="font-bold text-stone-900 text-sm">Pause Tenant Dashboard</h3>
-                  <span className="text-[11px] text-stone-500">{pauseModalTenant.name} (#{pauseModalTenant.id})</span>
+                  <h3 className="font-bold text-[#025033] text-sm">Pause Tenant Dashboard</h3>
+                  <span className="text-[11px] text-[#3A8067]">{pauseModalTenant.name} (#{pauseModalTenant.id})</span>
                 </div>
               </div>
               <button
                 onClick={() => setPauseModalTenant(null)}
-                className="w-7 h-7 rounded-full hover:bg-stone-100 text-stone-400 flex items-center justify-center"
+                className="w-7 h-7 rounded-full hover:bg-[#E6F7EF] text-[#3A8067] flex items-center justify-center transition"
               >
                 &times;
               </button>
             </div>
 
-            <div className="bg-rose-50 border border-rose-200/80 rounded-2xl p-3.5 text-xs text-rose-900 flex flex-col gap-1.5">
-              <span className="font-bold flex items-center gap-1.5 text-rose-800">
+            <div className="bg-[#E6F7EF] border border-[#CAE4D8] rounded-2xl p-3.5 text-xs text-[#025033] flex flex-col gap-1.5">
+              <span className="font-bold flex items-center gap-1.5 text-[#025033]">
                 <span>⚠️</span> Immediate Lockout Effect:
               </span>
-              <p className="text-[11px] text-rose-700 leading-relaxed">
+              <p className="text-[11px] text-[#3A8067] leading-relaxed">
                 Pausing this organization locks out its Agency Owners and Accountants from reading or mutating operational data. Super Admins retain the ability to inspect and resume the account at any time.
               </p>
             </div>
 
             <form onSubmit={handlePauseConfirm} className="flex flex-col gap-3">
               <div>
-                <label className="block text-[11px] font-bold text-stone-600 uppercase mb-1">
+                <label className="block text-[11px] font-bold text-[#025033] uppercase mb-1">
                   Reason for Suspension
                 </label>
                 <input
@@ -710,25 +712,25 @@ export function DeveloperCockpit({ onInspectTenant, activeMerchantId }: Develope
                   value={pauseReason}
                   onChange={(e) => setPauseReason(e.target.value)}
                   required
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2 text-xs text-stone-900 focus:outline-none focus:border-stone-900"
+                  className="w-full bg-[#FFFFFF] border border-[#E5EAE7] rounded-xl px-3 py-2 text-xs text-[#025033] placeholder-[#3A8067] focus:outline-none focus:border-[#025033]"
                 />
-                <span className="text-[10px] text-stone-400 mt-1 block">
+                <span className="text-[10px] text-[#3A8067] mt-1 block">
                   This notice will be displayed to staff members attempting to access the dashboard.
                 </span>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100 mt-2">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E5EAE7] mt-2">
                 <button
                   type="button"
                   onClick={() => setPauseModalTenant(null)}
-                  className="px-4 py-2 rounded-xl text-stone-600 hover:bg-stone-100 text-xs font-semibold"
+                  className="px-4 py-2 rounded-xl text-[#3A8067] hover:bg-[#E6F7EF] text-xs font-semibold transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={actionLoading}
-                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition disabled:opacity-50 shadow-sm flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-xl bg-[#025033] hover:bg-[#05572F] text-[#FFFFFF] text-xs font-bold transition disabled:opacity-50 shadow-sm flex items-center gap-1.5"
                 >
                   <span>{actionLoading ? 'Pausing...' : 'Confirm & Pause Account'}</span>
                   <span>⏸️</span>

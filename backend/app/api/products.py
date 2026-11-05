@@ -85,19 +85,37 @@ async def list_products(
     sql += " ORDER BY id DESC"
     products = all(sql, *params)
 
+    # Batch prefetch prices in 1 query
+    price_rows = all(
+        "SELECT product_id, purchase_price "
+        "FROM product_price_history "
+        "WHERE merchant_id = ? AND effective_from <= ? "
+        "ORDER BY product_id, effective_from ASC, id ASC",
+        m_id, t
+    )
+    price_by_prod = {pr['product_id']: pr['purchase_price'] for pr in price_rows}
+
+    # Batch prefetch stock in 1 query
+    stock_rows = all(
+        "SELECT product_id, COALESCE(SUM(qty), 0) AS q "
+        "FROM stock_movements "
+        "WHERE merchant_id = ? "
+        "GROUP BY product_id",
+        m_id
+    )
+    stock_by_prod = {sr['product_id']: int(sr['q']) for sr in stock_rows}
+
     rows = []
     missing_count = 0
 
     for p in products:
         p_id = p["id"]
-        # Determine cost price
-        c = cost_at(p_id, t)
-        cost = c["purchase_price"] if c else None
+        cost = price_by_prod.get(p_id)
         if cost is None:
             missing_count += 1
 
         sell = p.get("selling_price")
-        stock = stock_qty(p_id)
+        stock = stock_by_prod.get(p_id, 0)
 
         margin = None
         if cost is not None and sell and sell > 0:

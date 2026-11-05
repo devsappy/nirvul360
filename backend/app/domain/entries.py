@@ -307,10 +307,17 @@ def recent_entries(merchant_id: int, limit: int = 50) -> List[Dict[str, Any]]:
     )
     if not journals:
         return []
+
+    j_ids = [j['id'] for j in journals]
+    placeholders = ", ".join(["?"] * len(j_ids))
+    all_lines = all(
+        f"SELECT journal_id, account, party, amount, order_id, product_id, qty FROM journal_lines WHERE journal_id IN ({placeholders})",
+        *j_ids
+    )
+    lines_by_j: Dict[int, List[Dict[str, Any]]] = {}
+    for l in all_lines:
+        lines_by_j.setdefault(l['journal_id'], []).append(l)
+
     for j in journals:
-        lines = all(
-            "SELECT account, party, amount, order_id, product_id, qty FROM journal_lines WHERE journal_id = ?",
-            j['id']
-        )
-        j['lines'] = lines
+        j['lines'] = lines_by_j.get(j['id'], [])
     return journals

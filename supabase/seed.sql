@@ -85,24 +85,40 @@ VALUES
 ON CONFLICT DO NOTHING;
 
 -- 6. ORDERS
-INSERT INTO orders (id, merchant_id, external_id, order_date, customer_name, customer_phone, address, courier, consignment_id, status, subtotal, discount, shipping_charge, total, advance_paid, cod_amount, source, created_by, created_at)
+INSERT INTO orders (id, merchant_id, external_id, order_date, customer_name, customer_phone, address, courier, consignment_id, status, dispatched_date, delivered_date, returned_date, subtotal, discount, shipping_charge, total, advance_paid, cod_amount, source, created_by, created_at)
 VALUES
   -- Tenant 1: Artisan Wear
-  (1, 1, 'INV-1001', TO_CHAR(NOW() - INTERVAL '10 days', 'YYYY-MM-DD'), 'Rahim Ullah', '01711223344', 'Gulshan 2, Dhaka', 'steadfast', 'SF-9001', 'delivered', 65000, 0, 6000, 71000, 0, 71000, 'manual', 'user:3', NOW() - INTERVAL '10 days'),
-  (2, 1, 'INV-1002', TO_CHAR(NOW() - INTERVAL '8 days', 'YYYY-MM-DD'), 'Nasir Uddin', '01811334455', 'Agrabad, Chittagong', 'steadfast', 'SF-9002', 'delivered', 220000, 0, 12000, 232000, 0, 232000, 'manual', 'user:3', NOW() - INTERVAL '8 days'),
-  (3, 1, 'INV-1003', TO_CHAR(NOW() - INTERVAL '5 days', 'YYYY-MM-DD'), 'Kamal Hossain', '01911445566', 'Zindabazar, Sylhet', 'steadfast', 'SF-9003', 'in_transit', 165000, 0, 12000, 177000, 0, 177000, 'manual', 'user:3', NOW() - INTERVAL '5 days'),
-  (4, 1, 'INV-1004', TO_CHAR(NOW() - INTERVAL '3 days', 'YYYY-MM-DD'), 'Sultana Parveen', '01611556677', 'Uttara Sector 3, Dhaka', 'steadfast', 'SF-9004', 'delivered', 65000, 0, 6000, 71000, 0, 71000, 'manual', 'user:3', NOW() - INTERVAL '3 days'),
-  (5, 1, 'INV-1005', TO_CHAR(NOW() - INTERVAL '2 days', 'YYYY-MM-DD'), 'Faruk Ahmed', '01711667788', 'Chawkbazar, Chittagong', 'steadfast', 'SF-9005', 'returned', 65000, 0, 12000, 77000, 0, 77000, 'manual', 'user:3', NOW() - INTERVAL '2 days'),
+  (1, 1, 'INV-1001', TO_CHAR(NOW() - INTERVAL '10 days', 'YYYY-MM-DD'), 'Rahim Ullah', '01711223344', 'Gulshan 2, Dhaka', 'steadfast', 'SF-9001', 'delivered', TO_CHAR(NOW() - INTERVAL '10 days', 'YYYY-MM-DD'), TO_CHAR(NOW() - INTERVAL '9 days', 'YYYY-MM-DD'), NULL, 65000, 0, 6000, 71000, 0, 71000, 'manual', 'user:3', NOW() - INTERVAL '10 days'),
+  (2, 1, 'INV-1002', TO_CHAR(NOW() - INTERVAL '8 days', 'YYYY-MM-DD'), 'Nasir Uddin', '01811334455', 'Agrabad, Chittagong', 'steadfast', 'SF-9002', 'delivered', TO_CHAR(NOW() - INTERVAL '8 days', 'YYYY-MM-DD'), TO_CHAR(NOW() - INTERVAL '7 days', 'YYYY-MM-DD'), NULL, 220000, 0, 12000, 232000, 0, 232000, 'manual', 'user:3', NOW() - INTERVAL '8 days'),
+  (3, 1, 'INV-1003', TO_CHAR(NOW() - INTERVAL '5 days', 'YYYY-MM-DD'), 'Kamal Hossain', '01911445566', 'Zindabazar, Sylhet', 'steadfast', 'SF-9003', 'in_transit', TO_CHAR(NOW() - INTERVAL '5 days', 'YYYY-MM-DD'), NULL, NULL, 165000, 0, 12000, 177000, 0, 177000, 'manual', 'user:3', NOW() - INTERVAL '5 days'),
+  (4, 1, 'INV-1004', TO_CHAR(NOW() - INTERVAL '3 days', 'YYYY-MM-DD'), 'Sultana Parveen', '01611556677', 'Uttara Sector 3, Dhaka', 'steadfast', 'SF-9004', 'delivered', TO_CHAR(NOW() - INTERVAL '3 days', 'YYYY-MM-DD'), TO_CHAR(NOW() - INTERVAL '2 days', 'YYYY-MM-DD'), NULL, 65000, 0, 6000, 71000, 0, 71000, 'manual', 'user:3', NOW() - INTERVAL '3 days'),
+  (5, 1, 'INV-1005', TO_CHAR(NOW() - INTERVAL '2 days', 'YYYY-MM-DD'), 'Faruk Ahmed', '01711667788', 'Chawkbazar, Chittagong', 'steadfast', 'SF-9005', 'returned', TO_CHAR(NOW() - INTERVAL '2 days', 'YYYY-MM-DD'), NULL, TO_CHAR(NOW() - INTERVAL '1 day', 'YYYY-MM-DD'), 65000, 0, 12000, 77000, 0, 77000, 'manual', 'user:3', NOW() - INTERVAL '2 days'),
   
   -- Tenant 2: Dhaka Gadget Hub
-  (6, 2, 'GH-501', TO_CHAR(NOW() - INTERVAL '5 days', 'YYYY-MM-DD'), 'Zakir Hossain', '01712998877', 'Dhanmondi 27, Dhaka', 'steadfast', 'SF-GH-101', 'delivered', 245000, 0, 6000, 251000, 0, 251000, 'manual', 'user:5', NOW() - INTERVAL '5 days'),
-  (7, 2, 'GH-502', TO_CHAR(NOW() - INTERVAL '3 days', 'YYYY-MM-DD'), 'Mehedi Hasan', '01915443322', 'GEC Circle, Chittagong', 'steadfast', 'SF-GH-102', 'in_transit', 370000, 0, 12000, 382000, 0, 382000, 'manual', 'user:5', NOW() - INTERVAL '3 days'),
+  (6, 2, 'GH-501', TO_CHAR(NOW() - INTERVAL '5 days', 'YYYY-MM-DD'), 'Zakir Hossain', '01712998877', 'Dhanmondi 27, Dhaka', 'steadfast', 'SF-GH-101', 'delivered', TO_CHAR(NOW() - INTERVAL '5 days', 'YYYY-MM-DD'), TO_CHAR(NOW() - INTERVAL '4 days', 'YYYY-MM-DD'), NULL, 245000, 0, 6000, 251000, 0, 251000, 'manual', 'user:5', NOW() - INTERVAL '5 days'),
+  (7, 2, 'GH-502', TO_CHAR(NOW() - INTERVAL '3 days', 'YYYY-MM-DD'), 'Mehedi Hasan', '01915443322', 'GEC Circle, Chittagong', 'steadfast', 'SF-GH-102', 'in_transit', TO_CHAR(NOW() - INTERVAL '3 days', 'YYYY-MM-DD'), NULL, NULL, 370000, 0, 12000, 382000, 0, 382000, 'manual', 'user:5', NOW() - INTERVAL '3 days'),
 
   -- Tenant 3: Chittagong Organic Teas
-  (8, 3, 'TEA-101', TO_CHAR(NOW() - INTERVAL '4 days', 'YYYY-MM-DD'), 'Kazi Shahid', '01719556677', 'Nasirabad, Chittagong', 'steadfast', 'SF-TEA-01', 'delivered', 170000, 0, 5000, 175000, 0, 175000, 'manual', 'user:7', NOW() - INTERVAL '4 days')
+  (8, 3, 'TEA-101', TO_CHAR(NOW() - INTERVAL '4 days', 'YYYY-MM-DD'), 'Kazi Shahid', '01719556677', 'Nasirabad, Chittagong', 'steadfast', 'SF-TEA-01', 'delivered', TO_CHAR(NOW() - INTERVAL '4 days', 'YYYY-MM-DD'), TO_CHAR(NOW() - INTERVAL '3 days', 'YYYY-MM-DD'), NULL, 170000, 0, 5000, 175000, 0, 175000, 'manual', 'user:7', NOW() - INTERVAL '4 days')
 ON CONFLICT (id) DO NOTHING;
 
 SELECT setval('orders_id_seq', (SELECT MAX(id) FROM orders));
+
+-- 6b. ORDER ITEMS (every order must have line items so COGS and product matching work)
+INSERT INTO order_items (order_id, product_id, qty, unit_price, line_total)
+VALUES
+  -- Tenant 1: Artisan Wear
+  (1, 1, 1, 65000, 65000),   -- Premium Cotton T-Shirt
+  (2, 2, 1, 220000, 220000), -- Traditional Silk Panjabi
+  (3, 3, 1, 165000, 165000), -- Fleece Winter Hoodie
+  (4, 1, 1, 65000, 65000),
+  (5, 1, 1, 65000, 65000),
+  -- Tenant 2: Dhaka Gadget Hub
+  (6, 4, 1, 245000, 245000), -- Noise-Cancelling Earbuds Pro
+  (7, 5, 2, 185000, 370000), -- PowerBank x2
+  -- Tenant 3: Chittagong Organic Teas
+  (8, 7, 2, 85000, 170000)   -- Black Tea 500g x2
+ON CONFLICT DO NOTHING;
 
 -- 7. AUDIT LOG (PLATFORM ACTIVITY FEED)
 INSERT INTO audit_log (merchant_id, at, actor, action, entity, entity_id, after)

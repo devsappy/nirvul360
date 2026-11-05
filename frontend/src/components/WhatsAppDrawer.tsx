@@ -20,7 +20,7 @@ export function WhatsAppDrawer({ isOpen, onClose, onSuccess }: WhatsAppDrawerPro
   const [messages, setMessages] = useState<Message[]>([
     {
       sender: 'bot',
-      text: 'আসসালামু আলাইকুম! আমি আপনার Gross Management WhatsApp সহকারী।\n\nআপনি যেকোনো খরচের হিসাব বাংলায় লিখে পাঠাতে পারেন (যেমন: "প্যাকেজিং ৪০০ টাকা" বা "salary 15000")।\n\nঅথবা আজকের প্রফিট দেখতে "আজকের হিসাব" লিখুন।',
+      text: 'আসসালামু আলাইকুম! আমি আপনার nirvul360 WhatsApp সহকারী।\n\nআপনি যেকোনো খরচের হিসাব বাংলায় লিখে পাঠাতে পারেন (যেমন: "প্যাকেজিং ৪০০ টাকা" বা "salary 15000")।\n\nঅথবা আজকের প্রফিট দেখতে "আজকের হিসাব" লিখুন।',
       time: 'Just now',
     },
   ]);
@@ -88,7 +88,7 @@ export function WhatsAppDrawer({ isOpen, onClose, onSuccess }: WhatsAppDrawerPro
               <WhatsAppIcon className="w-5 h-5 text-[#FFFFFF]" />
             </div>
             <div className="flex flex-col">
-              <span className="font-bold text-sm leading-tight text-[#FFFFFF]">Gross WhatsApp AI</span>
+              <span className="font-bold text-sm leading-tight text-[#FFFFFF]">nirvul360 WhatsApp AI</span>
               <span className="text-[11px] text-[#CAE4D8]">2-step verified expense assistant</span>
             </div>
           </div>

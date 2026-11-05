@@ -154,7 +154,7 @@ export function ProductsView({ products = [], onRefresh, onOpenPurchaseModal, us
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', 'gross_inventory_template.csv');
+    link.setAttribute('download', 'nirvul360_inventory_template.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -679,7 +679,7 @@ export function ProductsView({ products = [], onRefresh, onOpenPurchaseModal, us
                 </h3>
               </div>
               <p className="text-xs text-[#3A8067] mt-1">
-                Connect your agency&apos;s website to pull and synchronize all inventory items, active/inactive statuses, and prices into Gross Management.
+                Connect your agency&apos;s website to pull and synchronize all inventory items, active/inactive statuses, and prices into nirvul360.
               </p>
             </div>
 

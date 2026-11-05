@@ -14,7 +14,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Gross Management — Automated Accounting for Bangladeshi E-Commerce",
+  title: "nirvul360 — Automated Accounting for Bangladeshi E-Commerce",
   description: "Real-time double-entry accounting engine & courier cashflow tracker",
 };
 

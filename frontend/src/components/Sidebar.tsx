@@ -77,7 +77,7 @@ export function Sidebar({
     { id: 'settings', label: 'Settings', icon: SettingsIcon },
   ];
 
-  const initials = user?.name ? user.name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase() : 'GM';
+  const initials = user?.name ? user.name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase() : 'NV';
 
   return (
     <aside className="w-64 bg-[#025033] border-r border-[#00432C] flex flex-col justify-between h-screen sticky top-0 shrink-0 select-none text-white">
@@ -89,7 +89,7 @@ export function Sidebar({
             <BoltIcon className="w-4 h-4 fill-current" />
           </div>
           <div className="flex flex-col">
-            <span className="font-bold text-sm tracking-tight text-[#FFFFFF] leading-tight">Gross Management</span>
+            <span className="font-bold text-sm tracking-tight text-[#FFFFFF] leading-tight">nirvul360</span>
             <span className="text-[11px] text-[#CAE4D8] font-medium">
               {isSuperAdmin ? 'Super Admin Tower' : 'Automated accounting'}
             </span>
@@ -106,7 +106,7 @@ export function Sidebar({
                 </div>
                 <div className="flex flex-col">
                   <span className="text-xs font-extrabold text-[#FFFFFF] leading-tight">
-                    Gross Platform
+                    nirvul360 Platform
                   </span>
                   <span className="text-[10px] text-[#CAE4D8] font-semibold">
                     Global Super Admin

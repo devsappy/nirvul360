@@ -1,5 +1,5 @@
 """
-FastAPI Main Application entry point for Gross Management.
+FastAPI Main Application entry point for nirvul360.
 """
 import os
 from pathlib import Path
@@ -56,11 +56,11 @@ async def lifespan(app: FastAPI):
                 print(f"Auto-seed warning: {e}")
         seed_reason_codes()
 
-    print(f"Gross Management (FastAPI) active — Engine ready.")
+    print(f"nirvul360 (FastAPI) active — Engine ready.")
     yield
 
 app = FastAPI(
-    title="Gross Management API",
+    title="nirvul360 API",
     description="Automated accounting engine for Bangladeshi E-commerce & F-commerce",
     version="2.0.0",
     lifespan=lifespan

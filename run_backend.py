@@ -1,5 +1,5 @@
 """
-Gross Management Python Backend Runner
+nirvul360 Python Backend Runner
 Runs FastAPI with Uvicorn on port 8000
 """
 import sys
@@ -22,5 +22,5 @@ sys.path.insert(0, str(backend_dir))
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
-    print(f"Starting Gross Management Python Backend on http://localhost:{port}")
+    print(f"Starting nirvul360 Python Backend on http://localhost:{port}")
     uvicorn.run("app.main:app", host="127.0.0.1", port=port, reload=False, app_dir=str(backend_dir))

@@ -1,5 +1,5 @@
 """
-Gross Management — Supabase Migration & Seeding CLI.
+nirvul360 — Supabase Migration & Seeding CLI.
 Run this script to initialize and migrate tables and demo data directly to Supabase PostgreSQL.
 Usage:
   python migrate_to_supabase.py
@@ -34,7 +34,7 @@ def run_migration():
         sys.exit(1)
 
     print("=" * 70)
-    print("GROSS MANAGEMENT — SUPABASE CLOUD DATABASE MIGRATION")
+    print("NIRVUL360 — SUPABASE CLOUD DATABASE MIGRATION")
     print("=" * 70)
     print(f"Connecting to Supabase PostgreSQL...")
 

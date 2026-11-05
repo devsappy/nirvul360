@@ -1,4 +1,4 @@
-# Gross Management — Accounting Software for Bangladeshi E-commerce Merchants
+# nirvul360 — Accounting Software for Bangladeshi E-commerce Merchants
 
 ## Project layout
 

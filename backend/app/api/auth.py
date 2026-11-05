@@ -55,7 +55,7 @@ def get_current_user(request: Request) -> Dict[str, Any]:
             reason = merchant.get('paused_reason') or 'Subscription payment overdue'
             raise HTTPException(
                 status_code=403,
-                detail=f"Account paused: {reason}. Please contact Gross Management Super Admin to settle overdue payment."
+                detail=f"Account paused: {reason}. Please contact nirvul360 Super Admin to settle overdue payment."
             )
 
     return {

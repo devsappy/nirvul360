@@ -475,7 +475,7 @@ export function IntegrationsModal({ isOpen, onClose, user, onSuccess }: Integrat
                   <span>Supabase PostgreSQL Integration</span>
                 </div>
                 <p className="text-[#3A8067] leading-relaxed">
-                  Gross Management automatically replicates every double-entry journal, order status transition, and exception resolution to Supabase PostgreSQL in real-time.
+                  nirvul360 automatically replicates every double-entry journal, order status transition, and exception resolution to Supabase PostgreSQL in real-time.
                 </p>
                 <div className="flex items-center gap-2 pt-2 border-t border-[#E5EAE7] font-mono text-[11px] text-[#3A8067]">
                   <span>Schema: supabase/schema.sql</span>

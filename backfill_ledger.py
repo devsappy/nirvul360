@@ -1,5 +1,5 @@
 """
-Gross Management — Ledger Backfill / Reconciliation.
+nirvul360 — Ledger Backfill / Reconciliation.
 
 Repairs databases where orders exist WITHOUT the double-entry journals the
 accounting engine posts (this happens when data is inserted by direct SQL,
@@ -234,7 +234,7 @@ def _fmt(poisha: int) -> str:
 
 if __name__ == "__main__":
     print("=" * 70)
-    print("GROSS MANAGEMENT — LEDGER BACKFILL (repairs raw-SQL seeded orders)")
+    print("NIRVUL360 — LEDGER BACKFILL (repairs raw-SQL seeded orders)")
     print("=" * 70)
     rep = backfill()
     print("\n--- Verification ---")

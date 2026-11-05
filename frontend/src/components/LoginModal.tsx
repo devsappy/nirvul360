@@ -50,7 +50,7 @@ export function LoginModal({ isOpen, onLoginSuccess }: LoginModalProps) {
             <BoltIcon className="w-5 h-5 fill-current" />
           </div>
           <div className="flex flex-col">
-            <h2 className="text-base font-bold text-[#025033] leading-tight">Gross Management</h2>
+            <h2 className="text-base font-bold text-[#025033] leading-tight">nirvul360</h2>
             <span className="text-xs text-[#3A8067]">Sign in to your accounting workspace</span>
           </div>
         </div>

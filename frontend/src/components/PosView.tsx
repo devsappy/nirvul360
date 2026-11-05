@@ -778,7 +778,7 @@ export function PosView({ user, onRefresh }: PosViewProps) {
             >
               {/* Receipt Header */}
               <div className="text-center flex flex-col gap-0.5">
-                <span className="font-black text-sm tracking-tight text-[#025033]">GROSS RETAIL OUTLET</span>
+                <span className="font-black text-sm tracking-tight text-[#025033]">NIRVUL360 RETAIL OUTLET</span>
                 <span className="text-[10px] text-[#3A8067]">Over-the-Counter Sales Desk</span>
                 <span className="text-[10px] text-[#3A8067]">{completedReceipt.placed_at}</span>
               </div>

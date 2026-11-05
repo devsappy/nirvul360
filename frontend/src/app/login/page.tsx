@@ -122,7 +122,7 @@ export default function LoginPage() {
         <div className="relative z-10">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-[#3A8067] bg-[#00432C]/80 backdrop-blur-md text-[#FFFFFF] text-[11px] font-black uppercase tracking-widest shadow-xl">
             <BoltIcon className="w-3.5 h-3.5 text-[#CAE4D8]" />
-            <span>GROSS MANAGEMENT</span>
+            <span>NIRVUL360</span>
           </div>
         </div>
 
@@ -149,7 +149,7 @@ export default function LoginPage() {
             {/* Mobile-only brand badge */}
             <div className="md:hidden flex items-center gap-2 text-[#025033] font-bold">
               <BoltIcon className="w-4 h-4 text-[#025033]" />
-              <span>Gross Management</span>
+              <span>nirvul360</span>
             </div>
             
             {mode === 'signin' ? (

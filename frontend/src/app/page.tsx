@@ -266,7 +266,7 @@ export default function Home() {
           </div>
 
           <p className="text-xs text-[#3A8067] max-w-sm leading-relaxed">
-            Please contact the Gross Management Platform Super Administrator to settle the balance and restore immediate access.
+            Please contact the nirvul360 Platform Super Administrator to settle the balance and restore immediate access.
           </p>
 
           <div className="w-full flex flex-col gap-2 pt-2">

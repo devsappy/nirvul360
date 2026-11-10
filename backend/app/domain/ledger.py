@@ -69,6 +69,13 @@ def post(header: Dict[str, Any], lines: List[Dict[str, Any]]) -> int:
             })
 
     event_bus.broadcast('journal_posted', {'journalId': journal_id, 'kind': header['kind']}, merchant_id)
+    try:
+        from app.api.dashboard import invalidate_dashboard_cache
+        invalidate_dashboard_cache(merchant_id)
+        from app.domain.expenses import invalidate_expenses_cache
+        invalidate_expenses_cache(merchant_id)
+    except Exception:
+        pass
     return journal_id
 
 def reverse(journal_id: int, ctx: Dict[str, Any]) -> int:

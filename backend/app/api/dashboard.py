@@ -7,8 +7,21 @@ from app.domain.exceptions import unresolved_totals
 from app.domain.ledger import balances_by_party
 from app.db.session import all, one
 from app.lib.dates import today, month_start, month_end, add_days
+import time
 
 router = APIRouter(prefix="/api", tags=["Dashboard"])
+
+_DASHBOARD_CACHE: Dict[str, Any] = {}
+CACHE_TTL = 10.0  # 10-second fast TTL
+
+def invalidate_dashboard_cache(merchant_id: Optional[int] = None):
+    global _DASHBOARD_CACHE
+    if merchant_id is None:
+        _DASHBOARD_CACHE.clear()
+    else:
+        prefix = f"{merchant_id}:"
+        for k in [k for k in _DASHBOARD_CACHE if k.startswith(prefix)]:
+            _DASHBOARD_CACHE.pop(k, None)
 
 @router.get("/dashboard")
 async def get_dashboard(
@@ -27,6 +40,16 @@ async def get_dashboard(
     else:
         f = from_date
     t = to_date or today()
+
+    user_info = current.get("user") or {}
+    role = user_info.get("role") or current.get("role") or "owner"
+
+    cache_key = f"{m_id}:{f}:{t}:{role}"
+    now = time.time()
+    if cache_key in _DASHBOARD_CACHE:
+        c_time, c_data = _DASHBOARD_CACHE[cache_key]
+        if now - c_time < CACHE_TTL:
+            return c_data
 
     dash = dashboard(m_id, f, t)
     pnl = dash.get("profit") or profit_and_loss(m_id, f, t)
@@ -57,11 +80,15 @@ async def get_dashboard(
     # Real couriers currently holding COD money (non-zero courier_receivable balance).
     courier_accounts_count = len(balances_by_party(m_id, "courier_receivable", on_or_before=t))
 
-    # --- Courier settlement truth (not derived from order counts) -----------------
-    # Settled: cohort orders that have a live settlement journal (COD money returned
-    # by the courier). Reconciled: settled orders with no open courier exception.
-    settled_row = one(
-        "SELECT COUNT(DISTINCT o.id) AS settled FROM orders o "
+    # --- Courier settlement truth (batched in 1 query) -----------------
+    settlement_counts = one(
+        "SELECT "
+        "  COUNT(DISTINCT o.id) AS settled, "
+        "  COUNT(DISTINCT CASE WHEN NOT EXISTS ("
+        "    SELECT 1 FROM exception_queue e WHERE e.order_id = o.id AND e.status = 'open' "
+        "    AND e.type IN ('short_settlement', 'zero_settlement', 'unsettled_cod', 'stuck_parcel')"
+        "  ) THEN o.id END) AS reconciled "
+        "FROM orders o "
         "WHERE o.merchant_id = ? AND o.order_date >= ? AND o.order_date <= ? AND o.is_duplicate = FALSE "
         "AND o.status IN ('delivered', 'returned') "
         "AND EXISTS ("
@@ -71,24 +98,8 @@ async def get_dashboard(
         ")",
         m_id, f, t
     )
-    settled = int(settled_row["settled"]) if settled_row else 0
-
-    reconciled_row = one(
-        "SELECT COUNT(DISTINCT o.id) AS r FROM orders o "
-        "WHERE o.merchant_id = ? AND o.order_date >= ? AND o.order_date <= ? AND o.is_duplicate = FALSE "
-        "AND o.status IN ('delivered', 'returned') "
-        "AND EXISTS ("
-        "  SELECT 1 FROM journals j WHERE j.order_id = o.id AND j.kind = 'settlement' "
-        "  AND j.reverses_journal_id IS NULL "
-        "  AND NOT EXISTS (SELECT 1 FROM journals r WHERE r.reverses_journal_id = j.id)"
-        ") "
-        "AND NOT EXISTS ("
-        "  SELECT 1 FROM exception_queue e WHERE e.order_id = o.id AND e.status = 'open' "
-        "  AND e.type IN ('short_settlement', 'zero_settlement', 'unsettled_cod', 'stuck_parcel')"
-        ")",
-        m_id, f, t
-    )
-    reconciled = int(reconciled_row["r"]) if reconciled_row else 0
+    settled = int(settlement_counts["settled"]) if settlement_counts and settlement_counts.get("settled") else 0
+    reconciled = int(settlement_counts["reconciled"]) if settlement_counts and settlement_counts.get("reconciled") else 0
 
     kpis = {
         "delivered_sales": gross_sales,
@@ -153,7 +164,7 @@ async def get_dashboard(
         kpis["net_margin_pct"] = None
         kpis["gross_margin_pct"] = None
 
-    return {
+    result = {
         "range": {
             "from": f,
             "to": t,
@@ -173,6 +184,8 @@ async def get_dashboard(
         "attention": exc,
         "operations": ops,
     }
+    _DASHBOARD_CACHE[cache_key] = (now, result)
+    return result
 
 @router.get("/trace")
 async def trace(

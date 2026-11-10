@@ -91,7 +91,60 @@ async def list_orders(
     total_row = one(count_sql, *count_params)
     total = total_row['c'] if total_row else len(rows)
 
-    # Compute profit on each order
+    # Batched profit computation on all returned orders (eliminates N+1 queries)
+    if not rows:
+        return {
+            "rows": [],
+            "pagination": {"limit": limit, "offset": offset, "total": total, "has_more": False}
+        }
+
+    delivered_ids = [o['id'] for o in rows if o.get('status') == 'delivered']
+    returned_ids = [o['id'] for o in rows if o.get('status') == 'returned']
+    relevant_ids = delivered_ids + returned_ids
+
+    items_by_order: Dict[int, List[Dict[str, Any]]] = {}
+    if delivered_ids:
+        ph_del = ','.join(['?' for _ in delivered_ids])
+        item_rows = all(f"SELECT order_id, product_id, qty FROM order_items WHERE order_id IN ({ph_del})", *delivered_ids)
+        for it in item_rows:
+            items_by_order.setdefault(it['order_id'], []).append(it)
+
+    price_rows = all(
+        "SELECT product_id, purchase_price FROM product_price_history WHERE merchant_id = ? ORDER BY product_id, effective_from ASC, id ASC",
+        m_id
+    )
+    price_by_prod = {pr['product_id']: pr['purchase_price'] for pr in price_rows}
+
+    fee_map_by_order: Dict[int, Dict[str, int]] = {}
+    settle_by_order: Dict[int, Dict[str, int]] = {}
+    if relevant_ids:
+        ph_rel = ','.join(['?' for _ in relevant_ids])
+        j_lines = all(
+            f"SELECT COALESCE(l.order_id, j.order_id) AS oid, l.account, SUM(l.amount) AS s "
+            f"FROM journal_lines l "
+            f"JOIN journals j ON j.id = l.journal_id "
+            f"WHERE (j.order_id IN ({ph_rel}) OR l.order_id IN ({ph_rel})) "
+            f"  AND l.account IN ('courier_delivery', 'courier_cod_fee', 'courier_return_fee', 'packaging', 'ad_spend') "
+            f"GROUP BY COALESCE(l.order_id, j.order_id), l.account",
+            *(relevant_ids + relevant_ids)
+        )
+        for jl in j_lines:
+            oid = jl['oid']
+            if oid:
+                fee_map_by_order.setdefault(oid, {})[jl['account']] = int(jl['s'] or 0)
+
+        s_rows = all(
+            f"SELECT order_id, SUM(delivery_charge) AS deliv, SUM(cod_fee) AS cod, SUM(return_fee) AS ret "
+            f"FROM settlement_rows WHERE order_id IN ({ph_rel}) GROUP BY order_id",
+            *relevant_ids
+        )
+        for sr in s_rows:
+            settle_by_order[sr['order_id']] = {
+                'deliv': int(sr.get('deliv') or 0),
+                'cod': int(sr.get('cod') or 0),
+                'ret': int(sr.get('ret') or 0),
+            }
+
     enriched_rows = []
     for o in rows:
         o_id = o['id']
@@ -101,62 +154,35 @@ async def list_orders(
         p_taka = None
 
         if st == 'delivered':
-            # Calculate COGS
-            items = order_items(o_id)
+            items = items_by_order.get(o_id, [])
             cogs_poisha = 0
-            order_d = o.get('delivered_date') or o.get('order_date') or '2026-11-01'
             for it in items:
                 pid = it.get('product_id')
                 qty = it.get('qty', 1)
                 if pid:
-                    c = cost_at(pid, order_d)
-                    unit_c = c.get('purchase_price') or 0 if c else 0
+                    unit_c = price_by_prod.get(pid, 0)
                     cogs_poisha += qty * unit_c
 
-            # Query courier fee, packaging, and ad spend from journals or settlement rows
-            fees_rows = all(
-                "SELECT l.account, SUM(l.amount) AS s FROM journal_lines l "
-                "JOIN journals j ON j.id = l.journal_id "
-                "WHERE (j.order_id = ? OR l.order_id = ?) AND l.account IN ('courier_delivery', 'courier_cod_fee', 'courier_return_fee', 'packaging', 'ad_spend') "
-                "GROUP BY l.account",
-                o_id, o_id
-            )
-            fee_map = {r['account']: int(r['s'] or 0) for r in fees_rows}
-            courier_delivery = fee_map.get('courier_delivery', 0)
-            courier_cod = fee_map.get('courier_cod_fee', 0)
+            fees = fee_map_by_order.get(o_id, {})
+            courier_delivery = fees.get('courier_delivery', 0)
+            courier_cod = fees.get('courier_cod_fee', 0)
             courier_fees = courier_delivery + courier_cod
-            pack = fee_map.get('packaging', 0)
-            ads = fee_map.get('ad_spend', 0)
+            pack = fees.get('packaging', 0)
+            ads = fees.get('ad_spend', 0)
 
-            # If no courier fees in journals, check settlement_rows
             if courier_fees == 0:
-                s_row = one(
-                    "SELECT SUM(delivery_charge) AS deliv, SUM(cod_fee) AS cod FROM settlement_rows WHERE order_id = ?",
-                    o_id
-                )
-                if s_row and (s_row.get('deliv') or s_row.get('cod')):
-                    courier_fees = int(s_row.get('deliv') or 0) + int(s_row.get('cod') or 0)
+                s_info = settle_by_order.get(o_id, {})
+                courier_fees = s_info.get('deliv', 0) + s_info.get('cod', 0)
 
             net_profit_poisha = tot - cogs_poisha - courier_fees - pack - ads
             p_poisha = net_profit_poisha
             p_taka = round(net_profit_poisha / 100, 2)
         elif st == 'returned':
-            fees_rows = all(
-                "SELECT l.account, SUM(l.amount) AS s FROM journal_lines l "
-                "JOIN journals j ON j.id = l.journal_id "
-                "WHERE (j.order_id = ? OR l.order_id = ?) AND l.account IN ('courier_delivery', 'courier_return_fee') "
-                "GROUP BY l.account",
-                o_id, o_id
-            )
-            fee_map = {r['account']: int(r['s'] or 0) for r in fees_rows}
-            return_fees = fee_map.get('courier_delivery', 0) + fee_map.get('courier_return_fee', 0)
+            fees = fee_map_by_order.get(o_id, {})
+            return_fees = fees.get('courier_delivery', 0) + fees.get('courier_return_fee', 0)
             if return_fees == 0:
-                s_row = one(
-                    "SELECT SUM(delivery_charge) AS deliv, SUM(return_fee) AS ret FROM settlement_rows WHERE order_id = ?",
-                    o_id
-                )
-                if s_row and (s_row.get('deliv') or s_row.get('ret')):
-                    return_fees = int(s_row.get('deliv') or 0) + int(s_row.get('ret') or 0)
+                s_info = settle_by_order.get(o_id, {})
+                return_fees = s_info.get('deliv', 0) + s_info.get('ret', 0)
 
             p_poisha = -return_fees if return_fees > 0 else 0
             p_taka = round(-return_fees / 100, 2) if return_fees > 0 else 0.0

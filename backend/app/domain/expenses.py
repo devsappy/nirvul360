@@ -39,11 +39,31 @@ def _ordinal_suffix(day):
         return "th"
     return {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
 
+_EXPENSES_CACHE: Dict[str, Any] = {}
+EXPENSES_CACHE_TTL = 10.0  # 10-second fast TTL
+
+def invalidate_expenses_cache(merchant_id: Optional[int] = None):
+    global _EXPENSES_CACHE
+    if merchant_id is None:
+        _EXPENSES_CACHE.clear()
+    else:
+        prefix = f"{merchant_id}:"
+        for k in [k for k in _EXPENSES_CACHE if k.startswith(prefix)]:
+            _EXPENSES_CACHE.pop(k, None)
+
 def get_expenses_summary(merchant_id: int, from_date: str, to_date: str, period: str = "this_month") -> Dict[str, Any]:
     """
     Computes real-time dynamic expense head aggregation for the period.
     Strictly isolates owner withdrawals from operating expenses.
     """
+    import time
+    cache_key = f"{merchant_id}:{from_date}:{to_date}:{period}"
+    now_ts = time.time()
+    if cache_key in _EXPENSES_CACHE:
+        c_time, c_data = _EXPENSES_CACHE[cache_key]
+        if now_ts - c_time < EXPENSES_CACHE_TTL:
+            return c_data
+
     # 1. Query operating expenses from journal_lines
     rows = all(
         """
@@ -294,7 +314,7 @@ def get_expenses_summary(merchant_id: int, from_date: str, to_date: str, period:
         'other': {'total_poisha': t.get('other_expense', 0)},
     }
 
-    return {
+    res = {
         'period': period,
         'from_date': from_date,
         'to_date': to_date,
@@ -344,6 +364,8 @@ def get_expenses_summary(merchant_id: int, from_date: str, to_date: str, period:
             'whatsapp_last_entry_at': _format_short_dt(wa_sync_val),
         }
     }
+    _EXPENSES_CACHE[cache_key] = (now_ts, res)
+    return res
 
 def get_recurring_expenses(merchant_id: int) -> Dict[str, Any]:
     """Returns recurring expense items and calculated next run dates."""

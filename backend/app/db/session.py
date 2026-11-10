@@ -151,7 +151,9 @@ def get_db():
     # reconnect if closed
     try:
         if _is_postgres:
-            conn.cursor().close()
+            if getattr(conn, 'closed', 0) != 0:
+                conn = open_db()
+                _local.conn = conn
         else:
             conn.execute("SELECT 1")
     except Exception:

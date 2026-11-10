@@ -111,17 +111,37 @@ def stock_value(merchant_id: int, as_of: str) -> Dict[str, Any]:
 
 def cash_position(merchant_id: int, as_of: str) -> Dict[str, Any]:
     accounts = all("SELECT * FROM cash_accounts WHERE merchant_id = ?", merchant_id)
-    cash_accts = [{
-        'id': a['id'],
-        'name': a['name'],
-        'kind': a['kind'],
-        'balance': balance(merchant_id, 'cash', party=str(a['id']), on_or_before=as_of)
-    } for a in accounts]
+    # Batched balance aggregation in 1 query across all accounts
+    bal_rows = all(
+        """
+        SELECT account, party, COALESCE(SUM(amount), 0) AS b
+        FROM journal_lines
+        WHERE merchant_id = ? AND entry_date <= ?
+          AND account IN ('cash', 'courier_receivable', 'courier_claims', 'supplier_payable')
+        GROUP BY account, party
+        """,
+        merchant_id, as_of
+    )
+    cash_by_party = {str(r['party']): int(r['b']) for r in bal_rows if r['account'] == 'cash' and r['party']}
+    cash_no_party = sum(int(r['b']) for r in bal_rows if r['account'] == 'cash' and not r['party'])
 
-    cash_total = sum(a['balance'] for a in cash_accts)
-    couriers_held = balance(merchant_id, 'courier_receivable', on_or_before=as_of)
-    courier_claims = balance(merchant_id, 'courier_claims', on_or_before=as_of)
-    supplier_payables = balance(merchant_id, 'supplier_payable', on_or_before=as_of)
+    couriers_held = sum(int(r['b']) for r in bal_rows if r['account'] == 'courier_receivable')
+    courier_claims = sum(int(r['b']) for r in bal_rows if r['account'] == 'courier_claims')
+    supplier_payables = sum(int(r['b']) for r in bal_rows if r['account'] == 'supplier_payable')
+
+    cash_accts = []
+    for a in accounts:
+        b = cash_by_party.get(str(a['id']), 0)
+        if len(accounts) == 1 and cash_no_party and not b:
+            b += cash_no_party
+        cash_accts.append({
+            'id': a['id'],
+            'name': a['name'],
+            'kind': a['kind'],
+            'balance': b
+        })
+
+    cash_total = sum(a['balance'] for a in cash_accts) or cash_no_party
     stock = stock_value(merchant_id, as_of)
 
     return {

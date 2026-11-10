@@ -114,63 +114,63 @@ export function Sidebar({
   ];
 
   return (
-    <aside className="w-64 bg-[#062E1F] border-r border-[#0A3725] flex flex-col justify-between h-screen sticky top-0 shrink-0 select-none text-white z-40">
+    <aside className="w-72 bg-[#062E1F] border-r border-[#0A3725] flex flex-col justify-between h-screen sticky top-0 shrink-0 select-none text-white z-40">
       {/* Top Header & Navigation */}
-      <div className="p-4 pb-0 flex flex-col gap-4 overflow-y-auto">
+      <div className="p-5 pb-0 flex flex-col gap-5 overflow-y-auto">
         {/* Brand Header */}
         <div className="flex flex-col px-1 pt-1">
-          <span className="text-lg font-bold tracking-tight text-white leading-tight">
+          <span className="text-xl font-bold tracking-tight text-white leading-tight">
             nirvul360
           </span>
-          <span className="text-xs text-[#7FA992] font-normal leading-tight">
+          <span className="text-sm text-[#7FA992] font-normal leading-tight mt-0.5">
             {isAdminConsole ? 'Super admin console' : 'Automated accounting'}
           </span>
         </div>
 
         {/* Store / Platform Header Card */}
         {isAdminConsole ? (
-          <div className="bg-[#0B3828] border border-[#124B33] rounded-xl p-3 flex flex-col gap-1.5 shadow-xs">
-            <span className="text-sm font-semibold text-white">Nirvul360 Platform</span>
+          <div className="bg-[#0B3828] border border-[#124B33] rounded-2xl p-3.5 flex flex-col gap-2 shadow-xs">
+            <span className="text-base font-semibold text-white">Nirvul360 Platform</span>
             <div className="flex items-center justify-between text-xs text-[#7FA992]">
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#D97706] text-white uppercase tracking-wider">
+              <span className="text-xs font-bold px-2 py-0.5 rounded bg-[#D97706] text-white uppercase tracking-wider">
                 SUPER ADMIN
               </span>
-              <span className="text-[11px] font-medium text-[#A3C9B8]">Multi-tenant control</span>
+              <span className="text-xs font-medium text-[#A3C9B8]">Multi-tenant control</span>
             </div>
           </div>
         ) : (
           <div className="relative">
             <div
               onClick={() => setStoreMenuOpen(!storeMenuOpen)}
-              className="bg-[#0B3828] border border-[#124B33] rounded-xl p-3 cursor-pointer hover:border-[#1E754E] transition flex flex-col gap-1.5"
+              className="bg-[#0B3828] border border-[#124B33] rounded-2xl p-3.5 cursor-pointer hover:border-[#1E754E] transition flex flex-col gap-2 shadow-xs"
             >
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-sm font-semibold text-white truncate max-w-[130px]">
+              <div className="flex items-center justify-between gap-1.5">
+                <span className="text-base font-semibold text-white truncate max-w-[150px]">
                   {activeStoreName}
                 </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#166534] text-white uppercase border border-[#22C55E]/30 tracking-wider shrink-0">
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#166534] text-white uppercase border border-[#22C55E]/30 tracking-wider shrink-0">
                   {displayPlan}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-xs text-[#7FA992]">
-                <span className="flex items-center gap-1">
-                  {countOfStores} {countOfStores === 1 ? 'store' : 'stores'} <span className="text-[10px]">▾</span>
+              <div className="flex items-center justify-between text-sm text-[#7FA992]">
+                <span className="flex items-center gap-1 font-medium">
+                  {countOfStores} {countOfStores === 1 ? 'store' : 'stores'} <span className="text-xs">▾</span>
                 </span>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                   <span
-                    className={`w-1.5 h-1.5 rounded-full ${
+                    className={`w-2 h-2 rounded-full ${
                       liveStatus === 'connected' ? 'bg-[#22C55E] animate-pulse' : 'bg-[#7FA992]'
                     }`}
                   />
-                  <span className="text-[10px] capitalize">{liveStatus}</span>
+                  <span className="text-xs capitalize font-medium">{liveStatus}</span>
                 </div>
               </div>
             </div>
 
             {/* Store Switcher Dropdown */}
             {storeMenuOpen && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-[#0B3828] border border-[#124B33] rounded-xl shadow-xl p-2 z-50 flex flex-col gap-1">
-                <span className="text-[10px] uppercase font-bold text-[#6E9E85] tracking-wider px-2 py-1">
+              <div className="absolute top-full left-0 right-0 mt-1.5 bg-[#0B3828] border border-[#124B33] rounded-2xl shadow-xl p-2.5 z-50 flex flex-col gap-1.5">
+                <span className="text-xs uppercase font-bold text-[#6E9E85] tracking-wider px-2 py-1">
                   Your Stores ({defaultStoresList.length})
                 </span>
                 {defaultStoresList.map((st) => (
@@ -180,7 +180,7 @@ export function Sidebar({
                       setStoreMenuOpen(false);
                       if (onSwitchStore) onSwitchStore(st.id);
                     }}
-                    className={`flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg text-xs transition ${
+                    className={`flex items-center justify-between w-full px-3 py-2 rounded-xl text-sm transition ${
                       st.name === activeStoreName
                         ? 'bg-[#166534] text-white font-medium'
                         : 'text-[#8CAFA0] hover:bg-[#124B33] hover:text-white'
@@ -188,9 +188,9 @@ export function Sidebar({
                   >
                     <span className="truncate">{st.name}</span>
                     {st.name === activeStoreName ? (
-                      <span className="text-white text-xs">✓</span>
+                      <span className="text-white text-sm">✓</span>
                     ) : (
-                      <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-[#062E1F] text-[#6E9E85]">
+                      <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-[#062E1F] text-[#6E9E85]">
                         {st.plan || 'STORE'}
                       </span>
                     )}
@@ -202,7 +202,7 @@ export function Sidebar({
                       setStoreMenuOpen(false);
                       onOpenTenantSwitcher();
                     }}
-                    className="mt-1 pt-1 border-t border-[#124B33] text-[11px] font-semibold text-[#CAE4D8] hover:text-white px-2 py-1 text-left"
+                    className="mt-1 pt-2 border-t border-[#124B33] text-xs font-semibold text-[#CAE4D8] hover:text-white px-2 py-1 text-left"
                   >
                     Switch tenant (Admin) ↗
                   </button>
@@ -213,36 +213,36 @@ export function Sidebar({
         )}
 
         {/* Navigation Sections */}
-        <div className="flex flex-col gap-4 pt-1">
+        <div className="flex flex-col gap-5 pt-1">
           {isAdminConsole ? (
             /* Super Admin Navigation */
             navSectionsAdmin.map((sec) => (
               <div key={sec.title}>
-                <span className="text-[11px] font-semibold text-[#6E9E85] uppercase tracking-wider px-3 pb-1 block">
+                <span className="text-xs font-semibold text-[#6E9E85] uppercase tracking-wider px-3 pb-1.5 block">
                   {sec.title}
                 </span>
-                <div className="flex flex-col gap-0.5">
+                <div className="flex flex-col gap-1">
                   {sec.items.map((item: any) => {
                     const isActive = currentTab === item.id || (item.id === 'admin_overview' && currentTab === 'admin_cockpit') || (item.id === 'admin_users' && currentTab === 'users_overview');
                     return (
                       <button
                         key={item.id}
                         onClick={() => onTabChange(item.id)}
-                        className={`flex items-center justify-between w-full px-3 py-2 rounded-xl text-xs transition ${
+                        className={`flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl text-sm transition ${
                           isActive
-                            ? 'bg-[#166534] text-white font-medium'
+                            ? 'bg-[#166534] text-white font-semibold'
                             : 'text-[#8CAFA0] hover:text-white hover:bg-[#0B3B28] font-normal'
                         }`}
                       >
                         <span className="truncate">{item.label}</span>
                         {isActive ? (
-                          <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 ml-2" />
+                          <span className="w-2 h-2 rounded-full bg-white shrink-0 ml-2" />
                         ) : item.badge ? (
-                          <span className="bg-[#F6D089] text-[#451A03] text-[10px] font-bold px-2 py-0.2 rounded-full shrink-0 ml-2">
+                          <span className="bg-[#F6D089] text-[#451A03] text-xs font-bold px-2.5 py-0.5 rounded-full shrink-0 ml-2">
                             {item.badge}
                           </span>
                         ) : item.dot ? (
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#EF4444] shrink-0 ml-2" />
+                          <span className="w-2 h-2 rounded-full bg-[#EF4444] shrink-0 ml-2" />
                         ) : null}
                       </button>
                     );
@@ -255,27 +255,27 @@ export function Sidebar({
             <>
               {/* Section: ACCOUNTING */}
               <div>
-                <span className="text-[11px] font-semibold text-[#6E9E85] uppercase tracking-wider px-3 pb-1 block">
+                <span className="text-xs font-semibold text-[#6E9E85] uppercase tracking-wider px-3 pb-1.5 block">
                   ACCOUNTING
                 </span>
-                <div className="flex flex-col gap-0.5">
+                <div className="flex flex-col gap-1">
                   {navItemsAccounting.map((item) => {
                     const isActive = currentTab === item.id;
                     return (
                       <button
                         key={item.id}
                         onClick={() => onTabChange(item.id)}
-                        className={`flex items-center justify-between w-full px-3 py-2 rounded-xl text-xs transition ${
+                        className={`flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl text-sm transition ${
                           isActive
-                            ? 'bg-[#166534] text-white font-medium'
+                            ? 'bg-[#166534] text-white font-semibold'
                             : 'text-[#8CAFA0] hover:text-white hover:bg-[#0B3B28] font-normal'
                         }`}
                       >
                         <span>{item.label}</span>
                         {isActive ? (
-                          <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 ml-2" />
+                          <span className="w-2 h-2 rounded-full bg-white shrink-0 ml-2" />
                         ) : item.badge ? (
-                          <span className="bg-[#F6D089] text-[#451A03] text-[10px] font-bold px-2 py-0.2 rounded-full shrink-0 ml-2">
+                          <span className="bg-[#F6D089] text-[#451A03] text-xs font-bold px-2.5 py-0.5 rounded-full shrink-0 ml-2">
                             {item.badge}
                           </span>
                         ) : null}
@@ -287,25 +287,25 @@ export function Sidebar({
 
               {/* Section: WORKSPACE */}
               <div>
-                <span className="text-[11px] font-semibold text-[#6E9E85] uppercase tracking-wider px-3 pb-1 block">
+                <span className="text-xs font-semibold text-[#6E9E85] uppercase tracking-wider px-3 pb-1.5 block">
                   WORKSPACE
                 </span>
-                <div className="flex flex-col gap-0.5">
+                <div className="flex flex-col gap-1">
                   {navItemsWorkspace.map((item) => {
                     const isActive = currentTab === item.id;
                     return (
                       <button
                         key={item.id}
                         onClick={() => onTabChange(item.id)}
-                        className={`flex items-center justify-between w-full px-3 py-2 rounded-xl text-xs transition ${
+                        className={`flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl text-sm transition ${
                           isActive
-                            ? 'bg-[#166534] text-white font-medium'
+                            ? 'bg-[#166534] text-white font-semibold'
                             : 'text-[#8CAFA0] hover:text-white hover:bg-[#0B3B28] font-normal'
                         }`}
                       >
                         <span>{item.label}</span>
                         {isActive ? (
-                          <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 ml-2" />
+                          <span className="w-2 h-2 rounded-full bg-white shrink-0 ml-2" />
                         ) : null}
                       </button>
                     );
@@ -318,17 +318,17 @@ export function Sidebar({
       </div>
 
       {/* User Profile Footer */}
-      <div className="p-3.5 bg-[#062E1F] border-t border-[#0A3725] flex flex-col gap-2">
+      <div className="p-4 bg-[#062E1F] border-t border-[#0A3725] flex flex-col gap-2.5">
         <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-[#0B3B28] text-white font-bold text-xs flex items-center justify-center border border-[#14532D] shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-[#0B3B28] text-white font-bold text-sm flex items-center justify-center border border-[#14532D] shrink-0">
               {initials}
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="text-xs font-semibold text-white truncate leading-tight">
+              <span className="text-sm font-semibold text-white truncate leading-tight">
                 {user?.name || (isAdminConsole ? 'Platform Admin' : 'User')}
               </span>
-              <span className="text-[11px] text-[#8CAFA0] font-normal leading-tight capitalize">
+              <span className="text-xs text-[#8CAFA0] font-normal leading-tight capitalize mt-0.5">
                 {isAdminConsole ? 'Super admin' : user?.role_label || (role === 'agency_owner' ? 'Owner' : role)}
               </span>
             </div>
@@ -336,7 +336,7 @@ export function Sidebar({
           <button
             onClick={onSignOut}
             title="Sign out"
-            className="p-1.5 text-[#8CAFA0] hover:text-white hover:bg-[#0B3B28] rounded-lg transition text-xs"
+            className="p-1.5 text-[#8CAFA0] hover:text-white hover:bg-[#0B3B28] rounded-xl transition text-xs font-medium"
           >
             Sign out
           </button>
@@ -346,7 +346,7 @@ export function Sidebar({
         {isAdminOrSuper && (
           <button
             onClick={() => onTabChange(isAdminConsole ? 'dashboard' : 'admin_overview')}
-            className="w-full py-1.5 px-2.5 rounded-lg bg-[#0B3B28] hover:bg-[#124B33] text-[11px] font-semibold text-[#8CAFA0] hover:text-white flex items-center justify-between transition border border-[#124B33]"
+            className="w-full py-2 px-3 rounded-xl bg-[#0B3B28] hover:bg-[#124B33] text-xs font-semibold text-[#8CAFA0] hover:text-white flex items-center justify-between transition border border-[#124B33]"
           >
             <span>{isAdminConsole ? 'View Store Dashboard' : 'Super Admin Console'}</span>
             <span>↗</span>

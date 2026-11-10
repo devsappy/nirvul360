@@ -71,18 +71,18 @@ export function MoneyTrackerCard({ cash, onOpenMoneyTab }: MoneyTrackerCardProps
   };
 
   return (
-    <div className="bg-[#FFFFFF] border border-[#E5EAE7] rounded-2xl p-5 shadow-2xs flex flex-col gap-4">
+    <div className="bg-[#FFFFFF] border border-[#E5EAE7] rounded-2xl p-4 sm:p-6 shadow-xs flex flex-col gap-4 sm:gap-5">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E5EAE7] pb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E5EAE7] pb-3 sm:pb-3.5">
         <div>
-          <h3 className="text-sm font-bold text-[#025033] tracking-tight">Where the money is</h3>
-          <p className="text-xs text-[#3A8067] font-medium">
+          <h3 className="text-base font-bold text-[#025033] tracking-tight">Where the money is</h3>
+          <p className="text-xs sm:text-sm text-[#3A8067] font-medium mt-0.5">
             Every taka tracked in the double-entry ledger — as of {cash.as_of}.
           </p>
         </div>
         <button
           onClick={onOpenMoneyTab}
-          className="text-xs font-semibold text-[#3A8067] hover:text-[#025033] transition"
+          className="text-xs sm:text-sm font-semibold text-[#3A8067] hover:text-[#025033] transition self-start sm:self-auto"
         >
           Money tab &gt;
         </button>
@@ -90,46 +90,46 @@ export function MoneyTrackerCard({ cash, onOpenMoneyTab }: MoneyTrackerCardProps
 
       {/* Cash account tiles */}
       {accounts.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
           {accounts.slice(0, 4).map((a) => (
-            <div key={a.id} className="bg-[#FAFCF9] border border-[#E5EAE7] rounded-xl px-3 py-2.5 flex flex-col gap-1">
-              <span className="text-[10px] font-bold uppercase text-[#3A8067]">{a.kind}</span>
-              <span className="text-[11px] font-semibold text-[#025033] truncate leading-tight">{a.name}</span>
-              <span className="text-sm font-black text-[#025033] font-mono">{formatTaka(a.balance)}</span>
+            <div key={a.id} className="bg-[#FAFCF9] border border-[#E5EAE7] rounded-xl px-3 sm:px-3.5 py-2.5 sm:py-3 flex flex-col gap-1 sm:gap-1.5 shadow-2xs">
+              <span className="text-[10px] sm:text-xs font-bold uppercase text-[#3A8067] tracking-wider">{a.kind}</span>
+              <span className="text-xs sm:text-sm font-semibold text-[#025033] truncate leading-tight">{a.name}</span>
+              <span className="text-sm sm:text-base font-black text-[#025033] font-mono mt-0.5 break-all">{formatTaka(a.balance)}</span>
             </div>
           ))}
-          <div className="bg-[#025033] text-[#FFFFFF] rounded-xl px-3 py-2.5 flex flex-col gap-1 border border-[#00432C]">
-            <span className="text-[10px] font-bold uppercase text-[#CAE4D8]">Total cash</span>
-            <span className="text-[11px] font-semibold text-[#CAE4D8] truncate leading-tight">All accounts</span>
-            <span className="text-sm font-black text-[#FFFFFF] font-mono">{formatTaka(cash.cash_in_hand)}</span>
+          <div className="bg-[#025033] text-[#FFFFFF] rounded-xl px-3 sm:px-3.5 py-2.5 sm:py-3 flex flex-col gap-1 sm:gap-1.5 border border-[#00432C] shadow-2xs">
+            <span className="text-[10px] sm:text-xs font-bold uppercase text-[#CAE4D8] tracking-wider">Total cash</span>
+            <span className="text-xs sm:text-sm font-semibold text-[#CAE4D8] truncate leading-tight">All accounts</span>
+            <span className="text-sm sm:text-base font-black text-[#FFFFFF] font-mono mt-0.5 break-all">{formatTaka(cash.cash_in_hand)}</span>
           </div>
         </div>
       )}
 
       {/* Money position rows */}
-      <div className="flex flex-col text-xs divide-y divide-[#E5EAE7]">
+      <div className="flex flex-col divide-y divide-[#E5EAE7]">
         {rows.map((r) => (
-          <div key={r.label} className="py-2.5 flex items-center justify-between gap-3">
+          <div key={r.label} className="py-2.5 sm:py-3 flex items-center justify-between gap-3">
             <div className="flex flex-col min-w-0">
-              <span className="font-semibold text-[#025033]">{r.label}</span>
-              <span className="text-[10px] text-[#3A8067] truncate">{r.hint}</span>
+              <span className="font-semibold text-xs sm:text-sm text-[#025033]">{r.label}</span>
+              <span className="text-[11px] sm:text-xs text-[#3A8067] truncate mt-0.5">{r.hint}</span>
             </div>
-            <span className={`font-mono text-sm font-bold shrink-0 ${toneClasses[r.tone]} ${r.value < 0 ? 'opacity-80' : ''}`}>
+            <span className={`font-mono text-sm sm:text-base font-bold shrink-0 ${toneClasses[r.tone]} ${r.value < 0 ? 'opacity-80' : ''}`}>
               {formatTaka(r.value)}
             </span>
           </div>
         ))}
 
         {/* Net liquid position */}
-        <div className="py-3 flex items-center justify-between bg-[#FAFCF9] border border-[#E5EAE7] rounded-xl px-3 mt-2">
-          <div className="flex items-center gap-2">
-            <InfoIcon className="w-3.5 h-3.5 text-[#025033] shrink-0" />
-            <span className="font-bold text-[#025033] text-xs">
+        <div className="py-3 sm:py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-[#FAFCF9] border border-[#E5EAE7] rounded-xl px-3.5 sm:px-4 mt-2.5 sm:mt-3">
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            <InfoIcon className="w-4 h-4 text-[#025033] shrink-0" />
+            <span className="font-bold text-[#025033] text-xs sm:text-sm">
               Net liquid position
-              <span className="font-medium text-[#3A8067] ml-1.5">(cash + held at couriers − supplier payables)</span>
+              <span className="font-medium text-[#3A8067] ml-1.5 sm:ml-2 text-[11px] sm:text-xs block sm:inline">(cash + held at couriers − supplier payables)</span>
             </span>
           </div>
-          <span className="font-mono text-sm font-black text-[#025033]">{formatTaka(cash.net_liquid)}</span>
+          <span className="font-mono text-sm sm:text-base font-black text-[#025033]">{formatTaka(cash.net_liquid)}</span>
         </div>
       </div>
     </div>

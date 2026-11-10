@@ -75,32 +75,32 @@ export function MiscExpenseCard({ entries = [], onRefresh, onSuccess }: MiscExpe
   };
 
   return (
-    <div className="bg-[#FFFFFF] border border-[#E5EAE7] rounded-2xl p-5 shadow-2xs flex flex-col gap-4 h-full">
+    <div className="bg-[#FFFFFF] border border-[#E5EAE7] rounded-2xl p-4 sm:p-5 lg:p-6 shadow-xs flex flex-col gap-4 sm:gap-5 h-full">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E5EAE7] pb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E5EAE7] pb-3 sm:pb-3.5">
         <div>
-          <h3 className="text-sm font-bold text-[#025033] tracking-tight">Record Miscellaneous Expense</h3>
-          <p className="text-xs text-[#3A8067] font-medium">
+          <h3 className="text-base font-bold text-[#025033] tracking-tight">Record Miscellaneous Expense</h3>
+          <p className="text-xs sm:text-sm text-[#3A8067] font-medium mt-0.5">
             Small spends outside the standard heads — saved to the ledger instantly.
           </p>
         </div>
         {totalMisc > 0 && (
-          <span className="text-[11px] font-bold text-[#3A8067] bg-[#FAFCF9] px-2.5 py-1 rounded-full border border-[#E5EAE7] whitespace-nowrap">
+          <span className="text-xs font-bold text-[#3A8067] bg-[#FAFCF9] px-3 py-1 rounded-full border border-[#E5EAE7] whitespace-nowrap self-start sm:self-auto">
             Recent: {formatTaka(totalMisc)}
           </span>
         )}
       </div>
 
       {/* Quick form */}
-      <form onSubmit={handleSubmit} className="flex flex-col gap-2.5">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         {error && (
-          <div className="p-2.5 bg-[#E6F7EF] border border-[#3A8067] text-[#025033] text-xs rounded-xl">
+          <div className="p-3 bg-[#E6F7EF] border border-[#3A8067] text-[#025033] text-sm rounded-xl">
             {error}
           </div>
         )}
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[10px] font-bold uppercase text-[#3A8067] mb-1">Amount (৳)</label>
+            <label className="block text-xs font-bold uppercase text-[#3A8067] mb-1.5 tracking-wider">Amount (৳)</label>
             <input
               type="number"
               step="0.01"
@@ -109,56 +109,56 @@ export function MiscExpenseCard({ entries = [], onRefresh, onSuccess }: MiscExpe
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               required
-              className="w-full bg-[#FAFCF9] border border-[#E5EAE7] rounded-xl px-3 py-2 text-xs font-mono text-[#025033] placeholder-[#3A8067] focus:outline-none focus:border-[#025033] transition"
+              className="w-full bg-[#FAFCF9] border border-[#E5EAE7] rounded-xl px-3.5 py-2.5 text-sm font-mono text-[#025033] placeholder-[#3A8067] focus:outline-none focus:border-[#025033] transition shadow-2xs"
             />
           </div>
           <div>
-            <label className="block text-[10px] font-bold uppercase text-[#3A8067] mb-1">Date</label>
+            <label className="block text-xs font-bold uppercase text-[#3A8067] mb-1.5 tracking-wider">Date</label>
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
               required
-              className="w-full bg-[#FAFCF9] border border-[#E5EAE7] rounded-xl px-3 py-2 text-xs text-[#025033] focus:outline-none focus:border-[#025033] transition"
+              className="w-full bg-[#FAFCF9] border border-[#E5EAE7] rounded-xl px-3.5 py-2.5 text-sm text-[#025033] focus:outline-none focus:border-[#025033] transition shadow-2xs"
             />
           </div>
         </div>
         <div>
-          <label className="block text-[10px] font-bold uppercase text-[#3A8067] mb-1">What was it for?</label>
+          <label className="block text-xs font-bold uppercase text-[#3A8067] mb-1.5 tracking-wider">What was it for?</label>
           <input
             type="text"
             placeholder="e.g. Snacks for delivery man, rickshaw fare, tape..."
             value={note}
             onChange={(e) => setNote(e.target.value)}
             maxLength={200}
-            className="w-full bg-[#FAFCF9] border border-[#E5EAE7] rounded-xl px-3 py-2 text-xs text-[#025033] placeholder-[#3A8067] focus:outline-none focus:border-[#025033] transition"
+            className="w-full bg-[#FAFCF9] border border-[#E5EAE7] rounded-xl px-3.5 py-2.5 text-sm text-[#025033] placeholder-[#3A8067] focus:outline-none focus:border-[#025033] transition shadow-2xs"
           />
         </div>
         <button
           type="submit"
           disabled={saving}
-          className="w-full bg-[#025033] text-[#FFFFFF] hover:bg-[#05572F] disabled:opacity-60 font-bold text-xs py-2.5 rounded-xl transition shadow-xs flex items-center justify-center gap-1.5"
+          className="w-full bg-[#025033] text-[#FFFFFF] hover:bg-[#05572F] disabled:opacity-60 font-bold text-sm py-3 rounded-xl transition shadow-xs flex items-center justify-center gap-2 mt-1"
         >
-          <PlusIcon className="w-3.5 h-3.5" />
+          <PlusIcon className="w-4 h-4" />
           <span>{saving ? 'Posting journal...' : 'Record Misc Expense'}</span>
         </button>
       </form>
 
       {/* Recent misc expenses */}
-      <div className="flex flex-col gap-1.5 pt-1">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[#3A8067]">Recent misc expenses</span>
+      <div className="flex flex-col gap-2 pt-1">
+        <span className="text-xs font-bold uppercase tracking-wider text-[#3A8067]">Recent misc expenses</span>
         {miscEntries.length === 0 ? (
-          <span className="text-xs text-[#3A8067] py-2">No miscellaneous expenses recorded yet</span>
+          <span className="text-sm text-[#3A8067] py-2">No miscellaneous expenses recorded yet</span>
         ) : (
           miscEntries.map((j) => {
             const amt = Math.max(0, (j.lines || []).filter((l) => l.account === 'other_expense').reduce((s, l) => s + (l.amount || 0), 0));
             return (
-              <div key={j.id} className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-xl hover:bg-[#E6F7EF]/40 transition">
+              <div key={j.id} className="flex items-center justify-between gap-2.5 py-2 px-3 rounded-xl hover:bg-[#E6F7EF]/40 transition">
                 <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-semibold text-[#025033] truncate">{j.memo || 'Misc expense'}</span>
-                  <span className="text-[10px] text-[#3A8067]">{j.entry_date}</span>
+                  <span className="text-sm font-semibold text-[#025033] truncate">{j.memo || 'Misc expense'}</span>
+                  <span className="text-xs text-[#3A8067] mt-0.5">{j.entry_date}</span>
                 </div>
-                <span className="text-xs font-mono font-bold text-[#025033] shrink-0">-{formatTaka(amt)}</span>
+                <span className="text-sm font-mono font-bold text-[#025033] shrink-0">-{formatTaka(amt)}</span>
               </div>
             );
           })

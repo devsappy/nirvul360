@@ -245,25 +245,25 @@ export default function Home() {
   // Account Suspended Screen for Tenant Users (Agency Owner / Accountant)
   if (merchant?.status === 'paused' && user.role !== 'super_admin' && user.role !== 'admin') {
     return (
-      <div className="min-h-screen bg-[#E6F7EF] flex flex-col items-center justify-center p-4">
-        <div className="max-w-md w-full bg-[#FFFFFF] rounded-3xl p-8 border border-[#E5EAE7] shadow-xl flex flex-col items-center text-center gap-5 animate-in fade-in zoom-in-95 duration-200">
+      <div className="min-h-screen bg-[#E6F7EF] flex flex-col items-center justify-center p-6">
+        <div className="max-w-md w-full bg-[#FFFFFF] rounded-3xl p-8 sm:p-10 border border-[#E5EAE7] shadow-xl flex flex-col items-center text-center gap-6 animate-in fade-in zoom-in-95 duration-200">
           <div className="w-16 h-16 rounded-2xl bg-[#E6F7EF] text-[#025033] flex items-center justify-center text-3xl border border-[#CAE4D8]">
             ⏸️
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#025033] bg-[#E6F7EF] px-3 py-1 rounded-full border border-[#CAE4D8] w-fit mx-auto">
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#025033] bg-[#E6F7EF] px-3.5 py-1 rounded-full border border-[#CAE4D8] w-fit mx-auto">
               Account Suspended
             </span>
-            <h1 className="text-xl font-black text-[#025033] mt-1">
+            <h1 className="text-2xl font-black text-[#025033] mt-1">
               Subscription Payment Overdue
             </h1>
-            <p className="text-xs text-[#3A8067]">
+            <p className="text-sm text-[#3A8067]">
               Access to <strong className="text-[#025033]">{merchant.name}</strong> is temporarily paused due to an outstanding subscription invoice.
             </p>
           </div>
 
-          <div className="w-full bg-[#FAFCF9] border border-[#E5EAE7] rounded-2xl p-4 text-left flex flex-col gap-2.5 text-xs">
+          <div className="w-full bg-[#FAFCF9] border border-[#E5EAE7] rounded-2xl p-5 text-left flex flex-col gap-3 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-[#3A8067] font-medium">Store Account</span>
               <span className="font-bold text-[#025033]">{merchant.name} (#{merchant.id})</span>
@@ -272,28 +272,28 @@ export default function Home() {
               <span className="text-[#3A8067] font-medium">Your Role</span>
               <span className="font-semibold text-[#025033]">{user.role_label}</span>
             </div>
-            <div className="pt-2 border-t border-[#E5EAE7] flex flex-col gap-1">
-              <span className="text-[#3A8067] font-medium text-[11px]">Suspension Note:</span>
-              <span className="font-semibold text-[#025033] bg-[#E6F7EF] p-2.5 rounded-xl border border-[#CAE4D8] text-xs leading-relaxed">
+            <div className="pt-2.5 border-t border-[#E5EAE7] flex flex-col gap-1.5">
+              <span className="text-[#3A8067] font-medium text-xs">Suspension Note:</span>
+              <span className="font-semibold text-[#025033] bg-[#E6F7EF] p-3 rounded-xl border border-[#CAE4D8] text-sm leading-relaxed">
                 {merchant.paused_reason || 'Subscription payment overdue'}
               </span>
             </div>
           </div>
 
-          <p className="text-xs text-[#3A8067] max-w-sm leading-relaxed">
+          <p className="text-sm text-[#3A8067] max-w-sm leading-relaxed">
             Please contact the nirvul360 Platform Super Administrator to settle the balance and restore immediate access.
           </p>
 
-          <div className="w-full flex flex-col gap-2 pt-2">
+          <div className="w-full flex flex-col gap-2.5 pt-2">
             <button
               onClick={() => window.location.reload()}
-              className="w-full py-2.5 rounded-xl bg-[#025033] hover:bg-[#00432C] text-[#FFFFFF] text-xs font-bold transition shadow-sm"
+              className="w-full py-3 rounded-xl bg-[#025033] hover:bg-[#00432C] text-[#FFFFFF] text-sm font-bold transition shadow-sm"
             >
               Check &amp; Refresh Status
             </button>
             <button
               onClick={handleSignOut}
-              className="w-full py-2.5 rounded-xl border border-[#E5EAE7] hover:bg-[#E6F7EF] text-[#3A8067] text-xs font-semibold transition"
+              className="w-full py-3 rounded-xl border border-[#E5EAE7] hover:bg-[#E6F7EF] text-[#3A8067] text-sm font-semibold transition"
             >
               Sign Out
             </button>
@@ -325,7 +325,7 @@ export default function Home() {
       />
 
       {/* 2. Main Content Area */}
-      <main className="flex-1 p-6 md:p-8 lg:p-10 max-w-7xl mx-auto flex flex-col gap-6 overflow-x-hidden bg-[#FAFCF9]">
+      <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 lg:p-10 max-w-[1600px] mx-auto flex flex-col gap-6 md:gap-8 overflow-x-hidden bg-[#FAFCF9]">
         {/* Header with Search & Controls (for regular store dashboard) */}
         {user.role !== 'super_admin' && currentTab === 'dashboard' && (
           <Header
@@ -342,21 +342,21 @@ export default function Home() {
 
         {/* Paused Tenant Warning Banner for Admins */}
         {merchant?.status === 'paused' && user.role === 'admin' && (
-          <div className="bg-[#00432C] text-white rounded-2xl p-4 px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md border border-[#05572F] animate-in fade-in slide-in-from-top-1">
-            <div className="flex items-center gap-3 text-xs">
-              <span className="text-xl">⏸️</span>
+          <div className="bg-[#00432C] text-white rounded-2xl p-4.5 px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md border border-[#05572F] animate-in fade-in slide-in-from-top-1">
+            <div className="flex items-center gap-3.5 text-sm">
+              <span className="text-2xl">⏸️</span>
               <div>
-                <span className="font-bold block tracking-wide">
+                <span className="font-bold block tracking-wide text-sm sm:text-base">
                   TENANT ACCOUNT PAUSED: {merchant.name} (Staff Locked Out)
                 </span>
-                <span className="text-[#CAE4D8] text-[11px]">
+                <span className="text-[#CAE4D8] text-xs">
                   Reason: <strong>{merchant.paused_reason || 'Subscription payment overdue'}</strong>. Staff cannot access the dashboard until resumed.
                 </span>
               </div>
             </div>
             <button
               onClick={handleResumeCurrentTenant}
-              className="px-4 py-1.5 rounded-xl bg-[#05572F] text-white hover:bg-[#025033] font-bold text-xs transition shrink-0 border border-[#CAE4D8] flex items-center gap-1.5"
+              className="px-4.5 py-2 rounded-xl bg-[#05572F] text-white hover:bg-[#025033] font-bold text-sm transition shrink-0 border border-[#CAE4D8] flex items-center gap-2"
             >
               <span>Resume Tenant Access</span>
               <span>▶️</span>
@@ -366,24 +366,24 @@ export default function Home() {
 
         {/* Developer Impersonation Oversight Banner */}
         {(user.role === 'admin' || user.role === 'super_admin') && currentTab === 'dashboard' && (
-          <div className="bg-[#00432C] text-white border border-[#05572F] rounded-2xl p-3.5 px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
-            <div className="flex items-center gap-3 text-xs">
+          <div className="bg-[#00432C] text-white border border-[#05572F] rounded-2xl p-4 px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
+            <div className="flex items-center gap-3 text-sm">
               <span className="w-2.5 h-2.5 rounded-full bg-[#CAE4D8] animate-pulse shrink-0" />
               <span>
                 <strong>Platform Oversight Active:</strong> Currently inspecting live books &amp; dashboard for{' '}
                 <strong className="underline text-[#FFFFFF] font-bold">{merchant?.name || 'Artisan Wear Bangladesh'}</strong>.
               </span>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2.5 shrink-0">
               <button
                 onClick={() => setTenantSwitcherOpen(true)}
-                className="px-3 py-1.5 rounded-xl bg-[#05572F] hover:bg-[#025033] text-[#CAE4D8] text-xs font-semibold border border-[#3A8067] transition"
+                className="px-3.5 py-2 rounded-xl bg-[#05572F] hover:bg-[#025033] text-[#CAE4D8] text-xs font-semibold border border-[#3A8067] transition"
               >
                 Switch Tenant ▾
               </button>
               <button
                 onClick={() => setCurrentTab('admin_overview')}
-                className="px-3 py-1.5 rounded-xl bg-[#025033] hover:bg-[#05572F] text-white text-xs font-bold transition border border-[#CAE4D8]"
+                className="px-3.5 py-2 rounded-xl bg-[#025033] hover:bg-[#05572F] text-white text-xs font-bold transition border border-[#CAE4D8]"
               >
                 Exit to Super Admin Console
               </button>
@@ -393,14 +393,14 @@ export default function Home() {
 
         {/* Real-time Toast Banner */}
         {toastMessage && (
-          <div className="p-3 bg-[#00432C] text-white rounded-2xl flex items-center justify-between text-xs shadow-md animate-fade-in border border-[#05572F]">
-            <div className="flex items-center gap-2">
+          <div className="p-3.5 bg-[#00432C] text-white rounded-2xl flex items-center justify-between text-sm shadow-md animate-fade-in border border-[#05572F]">
+            <div className="flex items-center gap-2.5">
               <span className="w-2 h-2 rounded-full bg-[#CAE4D8]" />
               <span>{toastMessage}</span>
             </div>
             <button
               onClick={() => setToastMessage(null)}
-              className="text-[#CAE4D8] hover:text-white text-xs px-2"
+              className="text-[#CAE4D8] hover:text-white text-sm px-2"
             >
               &times;
             </button>
@@ -409,9 +409,9 @@ export default function Home() {
 
         {/* Loading state placeholder */}
         {loading && !dashboard && !currentTab.startsWith('admin_') && currentTab !== 'users_overview' && user.role !== 'super_admin' ? (
-          <div className="py-20 flex flex-col items-center justify-center gap-3 text-[#3A8067]">
-            <div className="w-8 h-8 rounded-full border-2 border-[#CAE4D8] border-t-[#025033] animate-spin" />
-            <span className="text-xs font-medium">Loading ledger &amp; cash accounts...</span>
+          <div className="py-24 flex flex-col items-center justify-center gap-3.5 text-[#3A8067]">
+            <div className="w-9 h-9 rounded-full border-2 border-[#CAE4D8] border-t-[#025033] animate-spin" />
+            <span className="text-sm font-medium">Loading ledger &amp; cash accounts...</span>
           </div>
         ) : currentTab === 'admin_cockpit' ? (
           <DeveloperCockpit
@@ -430,23 +430,23 @@ export default function Home() {
           <>
             {/* View: Dashboard */}
             {currentTab === 'dashboard' && dashboard && (
-              <div className="flex flex-col gap-6">
-                {/* 7 KPI Cards (Delivered Sales, Gross Profit, Net Profit, Orders Placed, Delivery Rate, Held at Couriers, Net Margin) */}
+              <div className="flex flex-col gap-7">
+                {/* 7 KPI Cards */}
                 {dashboard.kpis ? (
                   <DashboardKpis kpis={dashboard.kpis} />
                 ) : (
-                  <div className="p-4 bg-[#FAFCF9] border border-[#E5EAE7] rounded-2xl text-xs text-[#3A8067]">Calculating KPIs...</div>
+                  <div className="p-5 bg-[#FAFCF9] border border-[#E5EAE7] rounded-2xl text-sm text-[#3A8067]">Calculating KPIs...</div>
                 )}
 
                 {/* Numbers You Can Trust Notice */}
-                <div className="bg-[#FFFFFF] border border-[#E5EAE7] rounded-2xl p-4 flex items-center justify-between text-xs text-[#3A8067] shadow-2xs">
-                  <div className="flex items-center gap-2">
+                <div className="bg-[#FFFFFF] border border-[#E5EAE7] rounded-2xl p-4 sm:p-4.5 px-4 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 text-xs sm:text-sm text-[#3A8067] shadow-xs">
+                  <div className="flex items-center gap-2.5">
                     <InfoIcon className="w-4 h-4 text-[#025033] shrink-0" />
                     <span>
                       <strong className="text-[#025033]">Numbers you can trust:</strong> Profit only includes delivered orders. Product value is measured at versioned purchase cost.
                     </span>
                   </div>
-                  <span className="text-[10px] font-bold text-[#3A8067] uppercase tracking-wider hidden sm:inline">
+                  <span className="text-[10px] sm:text-xs font-bold text-[#3A8067] uppercase tracking-wider shrink-0 self-start sm:self-auto">
                     Double-Entry Guaranteed
                   </span>
                 </div>
@@ -466,7 +466,7 @@ export default function Home() {
                 />
 
                 {/* Mid Section: Deliveries, Misc Expense Recorder, WhatsApp, Action Items */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-4 gap-4 sm:gap-6">
                   <DeliveriesList
                     deliveries={dashboard.today_deliveries && dashboard.today_deliveries.length > 0 ? dashboard.today_deliveries : orders}
                     onViewAllOrders={() => setCurrentTab('orders')}

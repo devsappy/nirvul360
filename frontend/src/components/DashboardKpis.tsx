@@ -97,27 +97,27 @@ export function DashboardKpis({ kpis }: DashboardKpisProps) {
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3.5">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-7 gap-3.5 sm:gap-4">
       {cards.map((c, idx) => {
         const isHero = c.isHero;
 
         return (
           <div
             key={idx}
-            className={`min-h-[155px] p-4 sm:p-5 rounded-2xl border transition shadow-2xs flex flex-col justify-between relative group ${
+            className={`min-h-[160px] sm:min-h-[170px] p-4 sm:p-5 rounded-2xl border transition shadow-2xs flex flex-col justify-between relative group ${
               isHero
                 ? 'bg-[#025033] border-[#00432C] text-[#FFFFFF]'
                 : 'bg-[#FFFFFF] border-[#E5EAE7] text-[#025033] hover:border-[#3A8067] hover:shadow-xs'
             }`}
           >
             {/* Top row: Title + Badge */}
-            <div className="flex items-start justify-between gap-1.5">
-              <span className={`text-xs font-semibold tracking-tight leading-snug ${isHero ? 'text-[#CAE4D8]' : 'text-[#3A8067]'}`}>
+            <div className="flex items-start justify-between gap-1.5 flex-wrap">
+              <span className={`text-xs sm:text-sm font-semibold tracking-tight leading-snug ${isHero ? 'text-[#CAE4D8]' : 'text-[#3A8067]'}`}>
                 {c.title}
               </span>
               {c.badge && (
                 <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${
+                  className={`text-[11px] sm:text-xs font-bold px-2 sm:px-2.5 py-0.5 rounded-full whitespace-nowrap ${
                     isHero
                       ? 'bg-[#05572F] text-[#CAE4D8] border border-[#3A8067]'
                       : c.badgeType === 'green'
@@ -133,9 +133,9 @@ export function DashboardKpis({ kpis }: DashboardKpisProps) {
             </div>
 
             {/* Middle: Big Metric Value */}
-            <div className="my-2">
+            <div className="my-2 sm:my-2.5">
               <div
-                className={`text-xl sm:text-2xl font-black tracking-tight leading-tight ${
+                className={`text-xl sm:text-2xl 2xl:text-[1.65rem] font-black tracking-tight leading-tight break-all ${
                   isHero ? 'text-[#FFFFFF]' : c.valueColor ? c.valueColor : 'text-[#025033]'
                 }`}
               >
@@ -144,14 +144,14 @@ export function DashboardKpis({ kpis }: DashboardKpisProps) {
             </div>
 
             {/* Bottom Row: Descriptive Subtext + Mini Icon */}
-            <div className={`mt-auto pt-2 border-t flex items-center justify-between text-xs font-medium min-h-[26px] ${
+            <div className={`mt-auto pt-2 sm:pt-2.5 border-t flex items-center justify-between text-xs font-medium min-h-[26px] sm:min-h-[30px] ${
               isHero ? 'border-[#05572F] text-[#CAE4D8]' : 'border-[#E5EAE7] text-[#3A8067]'
             }`}>
-              <span className={`text-[11px] truncate leading-tight ${isHero ? 'text-[#CAE4D8] font-semibold' : 'text-[#3A8067]'}`}>
+              <span className={`text-[11px] sm:text-xs truncate leading-tight ${isHero ? 'text-[#CAE4D8] font-semibold' : 'text-[#3A8067]'}`}>
                 {c.subtext}
               </span>
-              <div className="opacity-50 group-hover:opacity-100 transition shrink-0 ml-1">
-                <BarChartIcon className="w-3.5 h-3.5" />
+              <div className="opacity-60 group-hover:opacity-100 transition shrink-0 ml-1.5">
+                <BarChartIcon className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
               </div>
             </div>
           </div>

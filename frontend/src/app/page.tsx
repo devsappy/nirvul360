@@ -52,6 +52,7 @@ export default function Home() {
   const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
   const [whatsAppOpen, setWhatsAppOpen] = useState(false);
   const [tenantSwitcherOpen, setTenantSwitcherOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Data
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
@@ -311,10 +312,13 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen bg-[#FAFCF9]">
-      {/* 1. Left Sticky Navigation Sidebar */}
+      {/* 1. Navigation Sidebar (Desktop + Mobile Drawer) */}
       <Sidebar
         currentTab={currentTab}
-        onTabChange={handleTabChange}
+        onTabChange={(tab) => {
+          handleTabChange(tab);
+          setMobileMenuOpen(false);
+        }}
         user={user}
         merchantName={merchant?.name}
         attentionCount={exceptionsCount}
@@ -322,10 +326,31 @@ export default function Home() {
         onSignOut={handleSignOut}
         onOpenWhatsApp={() => setWhatsAppOpen(true)}
         onOpenTenantSwitcher={() => setTenantSwitcherOpen(true)}
+        mobileOpen={mobileMenuOpen}
+        onMobileClose={() => setMobileMenuOpen(false)}
       />
 
       {/* 2. Main Content Area */}
       <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 lg:p-10 max-w-[1600px] mx-auto flex flex-col gap-6 md:gap-8 overflow-x-hidden bg-[#FAFCF9]">
+        {/* Mobile Header Bar for non-dashboard tabs or super admin */}
+        {(user.role === 'super_admin' || currentTab !== 'dashboard') && (
+          <div className="lg:hidden flex items-center justify-between pb-3 border-b border-[#E5EAE7]">
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-bold text-[#025033]">nirvul360</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-[#E6F7EF] text-[#3A8067] font-semibold border border-[#CAE4D8]">
+                {currentTab.replace('_', ' ')}
+              </span>
+            </div>
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="p-2 rounded-xl bg-[#E6F7EF] border border-[#CAE4D8] text-[#025033] hover:bg-[#CAE4D8] transition"
+              title="Open Navigation Menu"
+            >
+              ☰
+            </button>
+          </div>
+        )}
+
         {/* Header with Search & Controls (for regular store dashboard) */}
         {user.role !== 'super_admin' && currentTab === 'dashboard' && (
           <Header
@@ -337,6 +362,7 @@ export default function Home() {
             onOpenExpenseModal={() => setExpenseModalOpen(true)}
             onOpenPurchaseModal={() => setPurchaseModalOpen(true)}
             onRefresh={loadData}
+            onOpenMobileMenu={() => setMobileMenuOpen(true)}
           />
         )}
 

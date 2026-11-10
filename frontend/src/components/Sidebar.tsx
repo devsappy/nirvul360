@@ -24,6 +24,8 @@ interface SidebarProps {
   onOpenWhatsApp?: () => void;
   onOpenTenantSwitcher?: () => void;
   onSwitchStore?: (storeId: number) => void;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
 export function Sidebar({
@@ -39,6 +41,8 @@ export function Sidebar({
   onSignOut,
   onOpenTenantSwitcher,
   onSwitchStore,
+  mobileOpen = false,
+  onMobileClose,
 }: SidebarProps) {
   const [storeMenuOpen, setStoreMenuOpen] = useState(false);
   const role = user?.role || 'agency_owner';
@@ -114,18 +118,41 @@ export function Sidebar({
   ];
 
   return (
-    <aside className="w-72 bg-[#062E1F] border-r border-[#0A3725] flex flex-col justify-between h-screen sticky top-0 shrink-0 select-none text-white z-40">
-      {/* Top Header & Navigation */}
-      <div className="p-5 pb-0 flex flex-col gap-5 overflow-y-auto">
-        {/* Brand Header */}
-        <div className="flex flex-col px-1 pt-1">
-          <span className="text-xl font-bold tracking-tight text-white leading-tight">
-            nirvul360
-          </span>
-          <span className="text-sm text-[#7FA992] font-normal leading-tight mt-0.5">
-            {isAdminConsole ? 'Super admin console' : 'Automated accounting'}
-          </span>
-        </div>
+    <>
+      {/* Mobile Backdrop */}
+      {mobileOpen && (
+        <div
+          onClick={onMobileClose}
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 lg:hidden transition-opacity"
+        />
+      )}
+
+      <aside
+        className={`fixed lg:sticky top-0 left-0 h-screen w-72 bg-[#062E1F] border-r border-[#0A3725] flex flex-col justify-between shrink-0 select-none text-white z-50 transition-transform duration-300 ease-in-out ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
+      >
+        {/* Top Header & Navigation */}
+        <div className="p-5 pb-0 flex flex-col gap-5 overflow-y-auto">
+          {/* Brand Header */}
+          <div className="flex items-center justify-between px-1 pt-1">
+            <div className="flex flex-col">
+              <span className="text-xl font-bold tracking-tight text-white leading-tight">
+                nirvul360
+              </span>
+              <span className="text-sm text-[#7FA992] font-normal leading-tight mt-0.5">
+                {isAdminConsole ? 'Super admin console' : 'Automated accounting'}
+              </span>
+            </div>
+            {/* Mobile close button */}
+            <button
+              onClick={onMobileClose}
+              className="lg:hidden p-1.5 rounded-lg bg-[#0B3828] text-[#8CAFA0] hover:text-white transition"
+              title="Close menu"
+            >
+              ✕
+            </button>
+          </div>
 
         {/* Store / Platform Header Card */}
         {isAdminConsole ? (
@@ -354,5 +381,6 @@ export function Sidebar({
         )}
       </div>
     </aside>
+    </>
   );
 }

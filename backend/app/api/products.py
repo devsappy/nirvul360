@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import BaseModel
 from app.api.auth import get_current_user, require_agency_owner
-from app.domain.roles import can_pause_product
+from app.domain.roles import can_pause_product, can_view_cost_prices, can_view_margins
 from app.domain.products import (
     get_product, find_product, cost_at, stock_qty,
     upsert_product, set_price, missing_price_products
@@ -105,13 +105,19 @@ async def list_products(
     )
     stock_by_prod = {sr['product_id']: int(sr['q']) for sr in stock_rows}
 
+    role = current["user"]["role"]
+    hide_cost = not can_view_cost_prices(role)
+    hide_margin = not can_view_margins(role)
+
     rows = []
     missing_count = 0
+    missing_ids = set()
 
     for p in products:
         p_id = p["id"]
         cost = price_by_prod.get(p_id)
         if cost is None:
+            missing_ids.add(p_id)
             missing_count += 1
 
         sell = p.get("selling_price")
@@ -126,18 +132,18 @@ async def list_products(
             "name": p["name"],
             "sku": p.get("sku") or "",
             "selling_price": sell,
-            "purchase_price": cost,
-            "cost_price": cost,
+            "purchase_price": None if hide_cost else cost,
+            "cost_price": None if hide_cost else cost,
             "stock_qty": stock,
             "active": bool(p.get("active", 1)),
             "external_id": p.get("external_id"),
             "source": p.get("source") or "manual",
-            "margin": margin,
+            "margin": None if (hide_cost or hide_margin) else margin,
             "created_at": p.get("created_at"),
         })
 
     if missing == "1":
-        rows = [r for r in rows if r["purchase_price"] is None]
+        rows = [r for r in rows if r["id"] in missing_ids]
 
     return rows
 
@@ -331,6 +337,139 @@ async def adjust_stock(
 
     return {"ok": True, "product_id": product_id, "stock_qty": new_stock}
 
+class StockAdjustmentInput(BaseModel):
+    counted_qty: int
+    reason: Optional[str] = "Damaged in storage"
+    note: Optional[str] = None
+
+@router.get("/{product_id}/history")
+async def get_product_price_history(product_id: int, current: Dict[str, Any] = Depends(get_current_user)):
+    """
+    Returns dated FIFO purchase cost price history for product.
+    Enriched with linked purchase batch and supplier.
+    """
+    m_id = current["merchantId"]
+    get_product(m_id, product_id)
+    rows = all(
+        "SELECT pph.id, pph.purchase_price, pph.effective_from, pph.source, pph.note, "
+        "p.batch_no, s.name as supplier_name "
+        "FROM product_price_history pph "
+        "LEFT JOIN purchases p ON pph.purchase_id = p.id "
+        "LEFT JOIN suppliers s ON p.supplier_id = s.id "
+        "WHERE pph.merchant_id = ? AND pph.product_id = ? "
+        "ORDER BY pph.effective_from DESC, pph.id DESC",
+        m_id, product_id
+    )
+    result = []
+    for idx, r in enumerate(rows):
+        is_current = (idx == 0)
+        eff_from = r["effective_from"]
+        eff_to = rows[idx - 1]["effective_from"] if idx > 0 else None
+        date_range_label = f"From {eff_from}" if is_current else (f"{eff_from} – {eff_to}" if eff_to else eff_from)
+        
+        result.append({
+            "id": r["id"],
+            "purchase_price": r["purchase_price"],
+            "purchase_price_taka": r["purchase_price"] / 100,
+            "effective_from": eff_from,
+            "effective_to": eff_to,
+            "date_range_label": date_range_label,
+            "is_current": is_current,
+            "batch_no": r["batch_no"],
+            "supplier_name": r["supplier_name"],
+            "note": r["note"],
+            "source": r["source"],
+        })
+    return {"product_id": product_id, "history": result}
+
+@router.post("/{product_id}/stock-adjustment")
+async def stock_count_adjustment(
+    product_id: int,
+    data: StockAdjustmentInput,
+    current: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    POST /api/products/{product_id}/stock-adjustment
+    Adjusts stock count based on physical inventory count.
+    Calculates shrinkage units and shrinkage loss in poisha.
+    Posts stock movement and P&L shrinkage entry if shrinkage occurred.
+    """
+    m_id = current["merchantId"]
+    actor = current["actor"]
+    p = get_product(m_id, product_id)
+
+    current_stock = stock_qty(product_id)
+    delta = data.counted_qty - current_stock
+    c = cost_at(product_id, today())
+    unit_cost_poisha = c["purchase_price"] if c else 0
+    shrinkage_units = -delta if delta < 0 else 0
+    shrinkage_loss_poisha = shrinkage_units * unit_cost_poisha
+
+    with tx():
+        insert("stock_movements", {
+            "merchant_id": m_id,
+            "product_id": product_id,
+            "qty": delta,
+            "reason": "adjustment",
+            "movement_date": today(),
+            "source": "manual",
+            "created_by": actor,
+            "created_at": now_iso()
+        })
+
+        if shrinkage_loss_poisha > 0:
+            from app.domain.ledger import post
+            post({
+                "merchant_id": m_id,
+                "date": today(),
+                "kind": "stock_adjustment",
+                "memo": f"Stock shrinkage adjustment for {p['name']}: {delta} units ({data.reason})",
+                "source": "manual",
+                "created_by": actor,
+            }, [
+                {"account": "stock_loss", "party": str(product_id), "amount": shrinkage_loss_poisha},
+                {"account": "inventory", "party": str(product_id), "amount": -shrinkage_loss_poisha},
+            ])
+
+    new_stock = stock_qty(product_id)
+    log_audit(
+        merchant_id=m_id,
+        action="stock_count_adjusted",
+        actor=actor,
+        entity="products",
+        entity_id=str(product_id),
+        details={
+            "system_qty": current_stock,
+            "counted_qty": data.counted_qty,
+            "delta": delta,
+            "shrinkage_units": shrinkage_units,
+            "shrinkage_loss_poisha": shrinkage_loss_poisha,
+            "reason": data.reason,
+        }
+    )
+
+    event_bus.publish({
+        "type": "inventory_updated",
+        "merchantId": m_id,
+        "productId": product_id,
+        "action": "stock_count_adjusted"
+    })
+
+    return {
+        "ok": True,
+        "product_id": product_id,
+        "product_name": p["name"],
+        "system_qty": current_stock,
+        "counted_qty": data.counted_qty,
+        "delta": delta,
+        "shrinkage_units": shrinkage_units,
+        "shrinkage_loss_poisha": shrinkage_loss_poisha,
+        "shrinkage_loss_taka": shrinkage_loss_poisha / 100,
+        "new_stock": new_stock,
+        "unit_cost_taka": unit_cost_poisha / 100,
+        "reason": data.reason,
+    }
+
 @router.get("/bulk/template")
 async def download_bulk_template():
     """
@@ -473,8 +612,10 @@ async def bulk_upload_products(
 # =====================================================================================
 
 class BulkPriceRow(BaseModel):
-    product_id: int
+    product_id: Optional[int] = None
+    sku: Optional[str] = None
     purchase_price: Optional[float] = None
+    effective_from: Optional[str] = None
 
 
 class BulkPriceInput(BaseModel):
@@ -521,37 +662,72 @@ async def download_missing_prices(current: Dict[str, Any] = Depends(get_current_
 def _validate_bulk_rows(m_id: int, rows: List[BulkPriceRow]):
     """
     Validate rows in merchant scope. Returns (valid, skipped):
-      valid:   [{'product_id', 'name', 'old_cost', 'new_cost', 'warnings': []}]
-      skipped: [{'product_id', 'reason'}]
+      valid:   [{'product_id', 'sku', 'name', 'old_cost', 'old_cost_taka', 'new_cost', 'new_cost_taka', 'change_type', 'change_delta', 'effective_date', 'warnings': []}]
+      skipped: [{'product_id', 'sku', 'reason'}]
     """
     valid = []
     skipped = []
     for r in rows:
-        try:
-            p = get_product(m_id, r.product_id)
-        except ValueError:
-            skipped.append({"product_id": r.product_id, "reason": "product not found"})
+        p = None
+        if r.product_id is not None:
+            try:
+                p = get_product(m_id, r.product_id)
+            except ValueError:
+                skipped.append({"product_id": r.product_id, "sku": r.sku, "reason": "product not found"})
+                continue
+        elif r.sku:
+            p = one("SELECT * FROM products WHERE merchant_id = ? AND lower(sku) = ?", m_id, r.sku.lower().strip())
+            if not p:
+                skipped.append({"product_id": None, "sku": r.sku, "reason": "unknown SKU"})
+                continue
+        else:
+            skipped.append({"product_id": None, "sku": None, "reason": "product_id or sku required"})
             continue
+
+        prod_id = p["id"]
         if r.purchase_price is None:
-            skipped.append({"product_id": r.product_id, "reason": "purchase_price missing"})
+            skipped.append({"product_id": prod_id, "sku": p.get("sku"), "reason": "purchase_price missing"})
             continue
         try:
             poisha = to_poisha(r.purchase_price)
         except ValueError as err:
-            skipped.append({"product_id": r.product_id, "reason": f"unreadable price: {err}"})
+            skipped.append({"product_id": prod_id, "sku": p.get("sku"), "reason": f"unreadable price: {err}"})
             continue
         if poisha < 0:
-            skipped.append({"product_id": r.product_id, "reason": "purchase price cannot be negative"})
+            skipped.append({"product_id": prod_id, "sku": p.get("sku"), "reason": "purchase price cannot be negative"})
             continue
-        c = cost_at(r.product_id, today())
+
+        c = cost_at(prod_id, today())
         warnings = []
-        if not c:
+        old_cost = c["purchase_price"] if c else None
+        old_cost_taka = (old_cost / 100) if old_cost is not None else None
+        new_cost_taka = poisha / 100
+
+        if old_cost is None:
             warnings.append("product has no price yet — new record created")
+            change_type = "first_price"
+            change_delta = "First price"
+        elif poisha > old_cost:
+            change_type = "price_increase"
+            change_delta = f"+৳{(poisha - old_cost) / 100:,.0f}"
+        elif poisha < old_cost:
+            change_type = "price_decrease"
+            change_delta = f"-৳{(old_cost - poisha) / 100:,.0f}"
+        else:
+            change_type = "no_change"
+            change_delta = "no change"
+
         valid.append({
-            "product_id": r.product_id,
+            "product_id": prod_id,
+            "sku": p.get("sku") or "",
             "name": p["name"],
-            "old_cost": c["purchase_price"] if c else None,
+            "old_cost": old_cost,
+            "old_cost_taka": old_cost_taka,
             "new_cost": poisha,
+            "new_cost_taka": new_cost_taka,
+            "change_type": change_type,
+            "change_delta": change_delta,
+            "effective_date": r.effective_from or today(),
             "warnings": warnings,
         })
     return valid, skipped
@@ -567,7 +743,11 @@ async def bulk_price_preview(data: BulkPriceInput, current: Dict[str, Any] = Dep
     Writes nothing.
     """
     m_id = current["merchantId"]
+    role = current["user"]["role"]
     valid, skipped = _validate_bulk_rows(m_id, data.rows)
+    if not can_view_cost_prices(role):
+        for v in valid:
+            v["old_cost"] = None
     return {"valid": valid, "skipped": skipped}
 
 
@@ -582,6 +762,12 @@ async def bulk_price_commit(data: BulkPriceInput, current: Dict[str, Any] = Depe
        "skipped": [{"product_id", "reason"}],
        "records": [{"product_id", "price_record_id", "effective_from"}]}
     """
+    role = current["user"]["role"]
+    if not can_view_cost_prices(role):
+        raise HTTPException(
+            status_code=403,
+            detail="Permission denied: Only store owners can update cost prices."
+        )
     m_id = current["merchantId"]
     actor = current["actor"]
     valid, skipped = _validate_bulk_rows(m_id, data.rows)
@@ -634,7 +820,15 @@ async def get_product_performance(
                  "courier_cost_poisha", "net_profit_poisha", "net_margin"}, ...]}
     Sorted net_profit DESC.
     """
+    role = current["user"]["role"]
     m_id = current["merchantId"]
     f = from_date or today()[:8] + "01"
     t = to_date or today()
-    return product_performance(m_id, f, t)
+    data = product_performance(m_id, f, t)
+    if not can_view_margins(role):
+        for r in data.get("rows", []):
+            r["cogs_poisha"] = None
+            r["gross_profit_poisha"] = None
+            r["net_profit_poisha"] = None
+            r["net_margin"] = None
+    return data

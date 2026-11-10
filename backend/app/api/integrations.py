@@ -251,38 +251,11 @@ async def pull_store_inventory(data: PullInventoryInput, current: Dict[str, Any]
         except Exception as e:
             print(f"Live store API pull warning ({e}), engaging simulated sync fallback.")
 
-    # High-fidelity simulated pull fallback for demonstrations or offline stores
     if not live_success or len(pulled_items) == 0:
-        catalog_samples = {
-            "wordpress": [
-                {"name": "Men Oxford Formal Shirt", "sku": "WC-SHIRT-OX", "selling_price": 145000, "purchase_price": 72000, "stock_qty": 45, "active": True},
-                {"name": "Slim Fit Stretch Chino", "sku": "WC-CHINO-02", "selling_price": 185000, "purchase_price": 95000, "stock_qty": 30, "active": True},
-                {"name": "Casual Denim Overshirt", "sku": "WC-DENIM-09", "selling_price": 220000, "purchase_price": 110000, "stock_qty": 18, "active": True},
-                {"name": "Embroidered Summer Kurti", "sku": "WC-KURTI-SMR", "selling_price": 125000, "purchase_price": 60000, "stock_qty": 25, "active": False},
-            ],
-            "shopify": [
-                {"name": "Wireless Noise Cancelling Pods", "sku": "SH-EAR-01", "selling_price": 285000, "purchase_price": 130000, "stock_qty": 60, "active": True},
-                {"name": "Magnetic 10K Power Bank", "sku": "SH-PB-MAG", "selling_price": 195000, "purchase_price": 90000, "stock_qty": 40, "active": True},
-                {"name": "Rugged Smartwatch Pro", "sku": "SH-SW-RUG", "selling_price": 380000, "purchase_price": 190000, "stock_qty": 15, "active": True},
-                {"name": "Silicone Fast-Charge Cable", "sku": "SH-CBL-65W", "selling_price": 45000, "purchase_price": 18000, "stock_qty": 100, "active": False},
-            ],
-            "laravel": [
-                {"name": "Handmade Leather Bifold Wallet", "sku": "LAR-WAL-01", "selling_price": 115000, "purchase_price": 55000, "stock_qty": 35, "active": True},
-                {"name": "Full Grain Leather Belt 38mm", "sku": "LAR-BLT-38", "selling_price": 95000, "purchase_price": 42000, "stock_qty": 50, "active": True},
-                {"name": "Executive Laptop Messenger Bag", "sku": "LAR-BAG-EXEC", "selling_price": 420000, "purchase_price": 210000, "stock_qty": 12, "active": True},
-                {"name": "Leather Cardholder Sleeve", "sku": "LAR-CRD-SLV", "selling_price": 55000, "purchase_price": 24000, "stock_qty": 40, "active": True},
-            ],
-            "daraz": [
-                {"name": "Organic Black Tea First Flush 500g", "sku": "DZ-TEA-500", "selling_price": 85000, "purchase_price": 38000, "stock_qty": 70, "active": True},
-                {"name": "Pure Mustard Oil Cold Pressed 1L", "sku": "DZ-OIL-1L", "selling_price": 36000, "purchase_price": 24000, "stock_qty": 55, "active": True},
-                {"name": "Sundarban Raw Wild Honey 500g", "sku": "DZ-HNY-500", "selling_price": 75000, "purchase_price": 45000, "stock_qty": 30, "active": True},
-            ],
-            "custom": [
-                {"name": "Custom Artisan Product Alpha", "sku": "CST-ALPHA-01", "selling_price": 150000, "purchase_price": 70000, "stock_qty": 25, "active": True},
-                {"name": "Custom Artisan Product Beta", "sku": "CST-BETA-02", "selling_price": 210000, "purchase_price": 95000, "stock_qty": 30, "active": True},
-            ]
-        }
-        pulled_items = catalog_samples.get(platform, catalog_samples["wordpress"])
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unable to pull inventory from {platform.capitalize()} store at '{url or 'unspecified URL'}'. Please check your store connection and API credentials."
+        )
 
     # Ingest pulled items into database
     imported_ids = []

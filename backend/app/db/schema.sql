@@ -11,9 +11,15 @@ CREATE TABLE merchants (
   id           INTEGER PRIMARY KEY,
   name         TEXT NOT NULL,
   api_key      TEXT NOT NULL UNIQUE,
-  settings     TEXT NOT NULL DEFAULT '{}',
+  settings     TEXT NOT NULL DEFAULT '{"currency": "BDT", "timezone": "Asia/Dhaka", "stuck_parcel_threshold_days": 5, "unsettled_cod_window_days": 10, "duplicate_window_hours": 72, "daily_summary": {"enabled": true, "time": "21:00"}}',
   status       TEXT NOT NULL DEFAULT 'active',
   paused_reason TEXT,
+  plan         TEXT NOT NULL DEFAULT 'starter',
+  plan_price   INTEGER NOT NULL DEFAULT 100000,
+  trial_ends_at TEXT,
+  order_limit  INTEGER NOT NULL DEFAULT 5000,
+  ai_token_cap INTEGER NOT NULL DEFAULT 50000,
+  ai_tokens_used INTEGER NOT NULL DEFAULT 0,
   created_at   TEXT NOT NULL
 );
 
@@ -25,15 +31,23 @@ CREATE TABLE users (
   password_hash TEXT,
   whatsapp      TEXT UNIQUE,              -- digits only, e.g. 8801711000000
   role          TEXT NOT NULL DEFAULT 'owner',
+  last_active_at TEXT,
+  status        TEXT NOT NULL DEFAULT 'active',
+  invited_at    TEXT,
+  scope         TEXT NOT NULL DEFAULT 'current_store',
   created_at    TEXT NOT NULL
 );
 
 CREATE TABLE sessions (
-  token       TEXT PRIMARY KEY,
-  user_id     INTEGER NOT NULL REFERENCES users(id),
+  token              TEXT PRIMARY KEY,
+  user_id            INTEGER NOT NULL REFERENCES users(id),
   active_merchant_id INTEGER REFERENCES merchants(id),
-  created_at  TEXT NOT NULL,
-  expires_at  TEXT NOT NULL
+  device_info        TEXT DEFAULT 'Browser',
+  ip_address         TEXT DEFAULT '127.0.0.1',
+  location           TEXT DEFAULT 'Dhaka',
+  last_active_at     TEXT,
+  created_at         TEXT NOT NULL,
+  expires_at         TEXT NOT NULL
 );
 
 -- Bank accounts, mobile wallets and physical cash. Balances live in the ledger (account 'cash').
@@ -47,11 +61,16 @@ CREATE TABLE cash_accounts (
 );
 
 CREATE TABLE suppliers (
-  id           INTEGER PRIMARY KEY,
-  merchant_id  INTEGER NOT NULL REFERENCES merchants(id),
-  name         TEXT NOT NULL,
-  phone        TEXT,
-  created_at   TEXT NOT NULL
+  id                INTEGER PRIMARY KEY,
+  merchant_id       INTEGER NOT NULL REFERENCES merchants(id),
+  name              TEXT NOT NULL,
+  phone             TEXT,
+  address           TEXT,
+  terms_days        INTEGER NOT NULL DEFAULT 30,
+  credit_terms_days INTEGER DEFAULT 30,
+  categories        TEXT,
+  advance_balance   INTEGER NOT NULL DEFAULT 0,
+  created_at        TEXT NOT NULL
 );
 
 -- Deliberately no purchase-price column: cost lives only in product_price_history.
@@ -99,6 +118,13 @@ CREATE TABLE purchases (
   qty             INTEGER NOT NULL CHECK (qty > 0),
   unit_cost       INTEGER NOT NULL CHECK (unit_cost >= 0),
   purchase_date   TEXT NOT NULL,
+  batch_no        TEXT,
+  status          TEXT NOT NULL DEFAULT 'unpaid' CHECK (status IN ('unpaid', 'part_paid', 'paid')),
+  total_cost      INTEGER NOT NULL DEFAULT 0,
+  paid_amount     INTEGER NOT NULL DEFAULT 0,
+  memo_photo_url  TEXT,
+  ocr_draft_id    INTEGER,
+  notes           TEXT,
   source          TEXT NOT NULL,
   created_by      TEXT NOT NULL,
   created_at      TEXT NOT NULL
@@ -174,8 +200,11 @@ CREATE TABLE journals (
   id                   INTEGER PRIMARY KEY,
   merchant_id          INTEGER NOT NULL REFERENCES merchants(id),
   entry_date           TEXT NOT NULL,
+  date                 TEXT,
   kind                 TEXT NOT NULL,
   memo                 TEXT,
+  description          TEXT,
+  amount               INTEGER,
   source               TEXT NOT NULL CHECK (source IN ('courier_api','courier_sheet_upload','meta_api','whatsapp_confirmed','manual','bank_statement_parse','store_api','system')),
   created_by           TEXT NOT NULL,
   created_at           TEXT NOT NULL,
@@ -379,3 +408,247 @@ CREATE TABLE scheduler_runs (
   ran_at       TEXT NOT NULL,
   PRIMARY KEY (merchant_id, job, run_key)
 );
+
+-- ==============================================================================
+-- MILESTONE 1 TABLES
+-- ==============================================================================
+
+-- 1. SaaS Subscription Plans Catalog
+CREATE TABLE IF NOT EXISTS saas_plans (
+  id                TEXT PRIMARY KEY, -- 'trial', 'starter', 'growth', 'scale'
+  name              TEXT NOT NULL,
+  price_poisha      INTEGER NOT NULL,
+  billing_interval  TEXT NOT NULL DEFAULT 'monthly',
+  order_limit       INTEGER NOT NULL,
+  courier_limit     INTEGER NOT NULL,
+  user_limit        INTEGER NOT NULL,
+  has_whatsapp      INTEGER NOT NULL DEFAULT 1,
+  has_meta_sync     INTEGER NOT NULL DEFAULT 0,
+  has_mushak        INTEGER NOT NULL DEFAULT 0,
+  has_multi_brand   INTEGER NOT NULL DEFAULT 0,
+  features          TEXT NOT NULL DEFAULT '[]',
+  status            TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'not_launched', 'deprecated')),
+  created_at        TEXT NOT NULL
+);
+
+-- 2. Billing Invoices & Dunning
+CREATE TABLE IF NOT EXISTS billing_invoices (
+  id              INTEGER PRIMARY KEY,
+  merchant_id     INTEGER NOT NULL REFERENCES merchants(id),
+  plan_id         TEXT NOT NULL REFERENCES saas_plans(id),
+  amount          INTEGER NOT NULL, -- poisha
+  billing_period  TEXT NOT NULL, -- 'YYYY-MM'
+  status          TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('paid', 'failed', 'pending', 'cancelled')),
+  payment_method  TEXT NOT NULL CHECK (payment_method IN ('bkash', 'card', 'nagad', 'bank')),
+  payment_details TEXT,
+  attempt_count   INTEGER NOT NULL DEFAULT 0,
+  max_attempts    INTEGER NOT NULL DEFAULT 3,
+  pauses_at       TEXT,
+  last_attempt_at TEXT,
+  paid_at         TEXT,
+  created_at      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_invoices_merchant ON billing_invoices(merchant_id, status);
+
+-- 3. Scheduled Jobs Telemetry (13 Background Crons)
+CREATE TABLE IF NOT EXISTS scheduled_jobs (
+  job_key               TEXT PRIMARY KEY,
+  name                  TEXT NOT NULL,
+  frequency             TEXT NOT NULL,
+  last_run_at           TEXT,
+  last_success_at       TEXT,
+  duration_ms           INTEGER,
+  status                TEXT NOT NULL DEFAULT 'ok' CHECK (status IN ('ok', 'failed', 'failing', 'running', 'paused', 'partial')),
+  consecutive_failures  INTEGER NOT NULL DEFAULT 0,
+  error_message         TEXT,
+  error_stack           TEXT,
+  failing_batch         TEXT,
+  next_run_at           TEXT,
+  updated_at            TEXT NOT NULL DEFAULT ''
+);
+
+-- 4. Dead-Letter Queue (DLQ)
+CREATE TABLE IF NOT EXISTS dead_letter_jobs (
+  id            INTEGER PRIMARY KEY,
+  job_key       TEXT NOT NULL REFERENCES scheduled_jobs(job_key),
+  merchant_id   INTEGER REFERENCES merchants(id),
+  payload       TEXT NOT NULL DEFAULT '{}',
+  failed_at     TEXT NOT NULL,
+  retry_count   INTEGER NOT NULL DEFAULT 3,
+  error         TEXT,
+  error_code    TEXT,
+  error_detail  TEXT,
+  status        TEXT NOT NULL DEFAULT 'waiting_human' CHECK (status IN ('waiting_human', 'requeued', 'discarded')),
+  resolved_at   TEXT,
+  resolved_by   TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_dlq_status ON dead_letter_jobs(status, job_key);
+
+-- 5. Integration Connection Status
+CREATE TABLE IF NOT EXISTS integration_connections (
+  id                    INTEGER PRIMARY KEY,
+  merchant_id           INTEGER NOT NULL REFERENCES merchants(id),
+  connector_type        TEXT NOT NULL CHECK (connector_type IN ('courier', 'store', 'meta_ads', 'whatsapp', 'mfs', 'bkash')),
+  provider              TEXT NOT NULL,
+  status                TEXT NOT NULL DEFAULT 'healthy' CHECK (status IN ('healthy', 'failing', 'never_connected', 'suspended', 'sheet_upload')),
+  last_success_at       TEXT,
+  last_sync_at          TEXT,
+  consecutive_failures  INTEGER NOT NULL DEFAULT 0,
+  failure_reason        TEXT,
+  token_expires_at      TEXT,
+  account_identifier    TEXT,
+  config                TEXT NOT NULL DEFAULT '{}',
+  created_at            TEXT NOT NULL,
+  updated_at            TEXT NOT NULL,
+  UNIQUE (merchant_id, connector_type, provider)
+);
+CREATE INDEX IF NOT EXISTS idx_integ_status ON integration_connections(merchant_id, status);
+
+-- 6. Support Tickets
+CREATE TABLE IF NOT EXISTS support_tickets (
+  id                INTEGER PRIMARY KEY,
+  merchant_id       INTEGER NOT NULL REFERENCES merchants(id),
+  subject           TEXT NOT NULL,
+  body              TEXT NOT NULL,
+  priority          TEXT NOT NULL DEFAULT 'normal' CHECK (priority IN ('urgent', 'high', 'normal', 'low')),
+  status            TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'waiting_admin', 'waiting_merchant', 'resolved', 'closed')),
+  waiting_hours     INTEGER NOT NULL DEFAULT 0,
+  assigned_to       INTEGER REFERENCES users(id),
+  created_at        TEXT NOT NULL,
+  first_replied_at  TEXT,
+  resolved_at       TEXT,
+  resolved_by       TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_tickets_status ON support_tickets(status, priority);
+
+-- 7. Broadcast Announcements
+CREATE TABLE IF NOT EXISTS announcements (
+  id              INTEGER PRIMARY KEY,
+  title           TEXT NOT NULL,
+  message         TEXT NOT NULL,
+  target_audience TEXT NOT NULL,
+  send_whatsapp   INTEGER NOT NULL DEFAULT 0,
+  created_by      INTEGER NOT NULL REFERENCES users(id),
+  published_at    TEXT NOT NULL,
+  status          TEXT NOT NULL DEFAULT 'published' CHECK (status IN ('draft', 'published', 'archived')),
+  created_at      TEXT NOT NULL
+);
+
+-- 8. AI Prompt Versions & Canary Rollouts
+CREATE TABLE IF NOT EXISTS ai_prompt_versions (
+  id                  INTEGER PRIMARY KEY,
+  task_key            TEXT NOT NULL,
+  version_label       TEXT NOT NULL,
+  description         TEXT,
+  prompt_template     TEXT NOT NULL,
+  rollout_status      TEXT NOT NULL CHECK (rollout_status IN ('live', 'canary', 'retired', 'draft')),
+  rollout_percentage  INTEGER NOT NULL DEFAULT 100 CHECK (rollout_percentage BETWEEN 0 AND 100),
+  confirmation_rate   REAL NOT NULL DEFAULT 0.0,
+  drafts_count        INTEGER NOT NULL DEFAULT 0,
+  created_by          TEXT NOT NULL,
+  created_at          TEXT NOT NULL,
+  retired_at          TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_prompts_task ON ai_prompt_versions(task_key, rollout_status);
+
+-- 9. AI Training Corrections (Rejected Drafts Few-Shot Bank)
+CREATE TABLE IF NOT EXISTS ai_training_corrections (
+  id                INTEGER PRIMARY KEY,
+  merchant_id       INTEGER REFERENCES merchants(id),
+  task_key          TEXT NOT NULL DEFAULT 'bengali_expense_extraction',
+  raw_input         TEXT NOT NULL,
+  ai_understood     TEXT NOT NULL,
+  rejection_reason  TEXT NOT NULL,
+  corrected_output  TEXT,
+  corrected_data    TEXT,
+  is_few_shot       INTEGER NOT NULL DEFAULT 0,
+  status            TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'corrected', 'few_shot_added', 'discarded')),
+  created_at        TEXT NOT NULL,
+  corrected_at      TEXT,
+  corrected_by      TEXT
+);
+
+-- 10. AI Safety Guardrails & Model Routing
+CREATE TABLE IF NOT EXISTS ai_guardrails (
+  guardrail_key TEXT PRIMARY KEY,
+  label         TEXT NOT NULL,
+  description   TEXT,
+  is_enabled    INTEGER NOT NULL DEFAULT 1,
+  is_immutable  INTEGER NOT NULL DEFAULT 0,
+  parameters    TEXT NOT NULL DEFAULT '{}',
+  updated_at    TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ai_model_routes (
+  task_key    TEXT PRIMARY KEY,
+  model_name  TEXT NOT NULL,
+  description TEXT,
+  updated_at  TEXT NOT NULL
+);
+
+-- 11. Feature Flags & Courier Adapters
+CREATE TABLE IF NOT EXISTS feature_flags (
+  flag_key            TEXT PRIMARY KEY,
+  label               TEXT NOT NULL,
+  description         TEXT,
+  rollout_percentage  INTEGER NOT NULL DEFAULT 0 CHECK (rollout_percentage BETWEEN 0 AND 100),
+  target_plan         TEXT,
+  is_active           INTEGER NOT NULL DEFAULT 1,
+  updated_at          TEXT NOT NULL,
+  updated_by          TEXT
+);
+
+CREATE TABLE IF NOT EXISTS courier_adapters (
+  id              INTEGER PRIMARY KEY,
+  courier_code    TEXT NOT NULL UNIQUE,
+  name            TEXT NOT NULL,
+  adapter_type    TEXT NOT NULL CHECK (adapter_type IN ('api', 'sheet')),
+  mapping_version TEXT NOT NULL,
+  tenants_count   INTEGER NOT NULL DEFAULT 0,
+  column_mapping  TEXT NOT NULL DEFAULT '{}',
+  is_active       INTEGER NOT NULL DEFAULT 1,
+  created_at      TEXT NOT NULL,
+  updated_at      TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS system_config (
+  config_key  TEXT PRIMARY KEY,
+  value       TEXT NOT NULL,
+  description TEXT,
+  updated_at  TEXT NOT NULL,
+  updated_by  TEXT
+);
+
+-- 12. Recurring Expenses Engine
+CREATE TABLE IF NOT EXISTS recurring_expenses (
+  id                INTEGER PRIMARY KEY,
+  merchant_id       INTEGER NOT NULL REFERENCES merchants(id),
+  head              TEXT NOT NULL CHECK (head IN ('rent', 'salary', 'utilities', 'software', 'transport', 'packaging', 'other_expense', 'internet')),
+  name              TEXT NOT NULL,
+  amount            INTEGER NOT NULL CHECK (amount > 0),
+  posts_on_day      INTEGER NOT NULL CHECK (posts_on_day BETWEEN 1 AND 28),
+  cash_account_id   INTEGER REFERENCES cash_accounts(id),
+  note              TEXT,
+  active            INTEGER NOT NULL DEFAULT 1,
+  last_posted_date  TEXT,
+  next_date         TEXT,
+  created_by        TEXT NOT NULL DEFAULT 'system',
+  created_at        TEXT NOT NULL,
+  updated_at        TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_recurring_merchant ON recurring_expenses(merchant_id, active);
+
+-- 13. Purchase Memo Photo OCR Drafts
+CREATE TABLE IF NOT EXISTS memo_drafts (
+  id          INTEGER PRIMARY KEY,
+  merchant_id INTEGER NOT NULL REFERENCES merchants(id),
+  supplier_id INTEGER REFERENCES suppliers(id),
+  image_url   TEXT NOT NULL,
+  file_name   TEXT NOT NULL,
+  ocr_data    TEXT NOT NULL DEFAULT '{}',
+  status      TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'applied', 'discarded')),
+  created_by  TEXT NOT NULL,
+  created_at  TEXT NOT NULL,
+  applied_at  TEXT
+);
+

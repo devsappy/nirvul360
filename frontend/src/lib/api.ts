@@ -99,3 +99,100 @@ export function formatPct(ratio: number | undefined | null): string {
   if (ratio === undefined || ratio === null || isNaN(ratio)) return '0%';
   return `${(ratio * 100).toFixed(1)}%`;
 }
+
+// --- Screen-Specific Typed API Clients ---
+import type {
+  ExpensesSummaryResponse,
+  RecurringExpensesResponse,
+  RecurringExpenseItem,
+  SupplierItem,
+  SupplierStatementData,
+  WhatsAppStatusData,
+  WhatsAppChatMessage,
+  IntegrationsHubData,
+  MerchantSettingsResponse,
+  CashAccountItem,
+  DatedCostPrice,
+  BulkPricePreviewRow,
+  StockAdjustmentResult,
+} from '../types';
+
+export const apiExpenses = {
+  getSummary: (period: string = 'this_month') =>
+    api.get<ExpensesSummaryResponse>(`/api/expenses/summary?period=${period}`),
+  getRecurring: () =>
+    api.get<RecurringExpensesResponse>('/api/expenses/recurring'),
+  createRecurring: (data: Partial<RecurringExpenseItem>) =>
+    api.post('/api/expenses/recurring', data),
+  updateRecurring: (id: number, data: Partial<RecurringExpenseItem>) =>
+    api.put(`/api/expenses/recurring/${id}`, data),
+  createExpense: (data: { head: string; amount: number; date?: string; cash_account_id?: number; note?: string }) =>
+    api.post('/api/expenses', data),
+  createWithdrawal: (data: { amount: number; date?: string; cash_account_id?: number; note?: string }) =>
+    api.post('/api/withdrawals', data),
+};
+
+export const apiSuppliers = {
+  list: () =>
+    api.get<{ suppliers: SupplierItem[]; total_payable_taka?: number; total_advance_taka?: number }>('/api/suppliers'),
+  getStatement: (id: number) =>
+    api.get<SupplierStatementData>(`/api/suppliers/${id}/statement`),
+  create: (data: Partial<SupplierItem>) =>
+    api.post('/api/suppliers', data),
+  createPurchase: (data: { productId: number; qty: number; unitCost: number; supplierId?: number; date?: string; paidAmount?: number; cashAccountId?: number }) =>
+    api.post('/api/purchases', data),
+  paySupplier: (data: { supplierId: number; amount: number; date?: string; cashAccountId?: number; note?: string }) =>
+    api.post('/api/supplier-payments', data),
+};
+
+export const apiWhatsApp = {
+  getOverview: () =>
+    api.get<WhatsAppStatusData>('/api/whatsapp/overview'),
+  getConversation: () =>
+    api.get<{ messages: WhatsAppChatMessage[] }>('/api/whatsapp/conversation'),
+  simulate: (text: string, phone?: string) =>
+    api.post<{ ok: boolean; replies: string[]; pending_draft?: any }>('/api/whatsapp/simulate', { text, phone }),
+  confirm: () =>
+    api.post<{ ok: boolean; reply: string }>('/api/whatsapp/confirm'),
+  reject: () =>
+    api.post<{ ok: boolean; reply: string }>('/api/whatsapp/reject'),
+};
+
+export const apiIntegrations = {
+  getOverview: () =>
+    api.get<IntegrationsHubData>('/api/integrations/overview'),
+};
+
+export const apiSettings = {
+  getSettings: () =>
+    api.get<MerchantSettingsResponse>('/api/merchants/settings'),
+  updateSettings: (data: Partial<MerchantSettingsResponse>) =>
+    api.put('/api/merchants/settings', data),
+  getCashAccounts: () =>
+    api.get<{ accounts: CashAccountItem[]; total_cash_taka: number }>('/api/cash-accounts'),
+  createCashAccount: (data: { name: string; kind: string; opening_balance?: number; is_default?: boolean }) =>
+    api.post('/api/cash-accounts', data),
+  closeAccount: (confirmationName: string) =>
+    api.post('/api/merchants/close', { confirmation_name: confirmationName }),
+};
+
+export const apiProducts = {
+  getPriceHistory: (productId: number) =>
+    api.get<{ product_id: number; history: DatedCostPrice[] }>(`/api/products/${productId}/history`),
+  previewBulkPrices: (rows: Array<{ product_id?: number; sku?: string; purchase_price: number }>) =>
+    api.post<{ valid: BulkPricePreviewRow[]; skipped: Array<{ product_id?: number; sku?: string; reason: string }> }>('/api/products/prices/bulk-preview', { rows }),
+  commitBulkPrices: (rows: Array<{ product_id?: number; sku?: string; purchase_price: number }>) =>
+    api.post<{ ok: boolean; applied: number; skipped: any[]; records: any[] }>('/api/products/prices/bulk-commit', { rows }),
+  adjustStockCount: (productId: number, countedQty: number, reason?: string) =>
+    api.post<StockAdjustmentResult>(`/api/products/${productId}/stock-adjustment`, { counted_qty: countedQty, reason }),
+};
+
+export const apiTenants = {
+  switchTenant: (merchantId: number) =>
+    api.post<{ ok: boolean; active_merchant_id: number; merchant_name: string }>('/api/admin/switch-tenant', {
+      merchant_id: merchantId,
+    }),
+  listTenants: () =>
+    api.get<{ tenants: any[] }>('/api/admin/tenants'),
+};
+

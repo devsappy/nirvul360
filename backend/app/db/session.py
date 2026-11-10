@@ -204,6 +204,12 @@ def run(sql: str, *params):
     if _is_postgres:
         with conn.cursor() as cur:
             cur.execute(f_sql, params)
+            if "RETURNING" in sql.upper():
+                row = cur.fetchone()
+                if _tx_depth == 0:
+                    conn.commit()
+                if row:
+                    return list(row.values())[0] if isinstance(row, dict) else row[0]
             if _tx_depth == 0:
                 conn.commit()
             return cur
@@ -211,6 +217,10 @@ def run(sql: str, *params):
         cur = conn.execute(f_sql, params)
         if _tx_depth == 0:
             conn.commit()
+        if "RETURNING" in sql.upper():
+            row = cur.fetchone()
+            if row:
+                return list(row.values())[0] if isinstance(row, dict) else row[0]
         return cur
 
 def _normalise(v: Any) -> Any:
@@ -229,7 +239,11 @@ def insert(table: str, row: Dict[str, Any]) -> int:
     
     if _is_postgres:
         placeholders = ", ".join(["%s"] * len(keys))
-        if table in ("sessions", "reason_codes", "scheduler_runs"):
+        if table in (
+            "sessions", "reason_codes", "scheduler_runs",
+            "saas_plans", "scheduled_jobs", "feature_flags",
+            "ai_guardrails", "ai_model_routes", "system_config"
+        ):
             sql = f"INSERT INTO {table} ({', '.join(keys)}) VALUES ({placeholders})"
             with conn.cursor() as cur:
                 cur.execute(sql, vals)

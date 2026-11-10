@@ -334,7 +334,7 @@ def drilldown(merchant_id: int, metric: str, from_date: str, to_date: str) -> Di
     return {'metric': metric, 'total': total, 'rows': rows}
 
 
-def daily_summary_text(merchant_id: int, for_date: Optional[str] = None, conn=None) -> str:
+def daily_summary_text(merchant_id: int, for_date: Optional[str] = None, conn=None, hide_margins: bool = False) -> str:
     from app.lib.dates import add_days
     d = for_date or today()
     y = add_days(d, -1)
@@ -357,7 +357,7 @@ def daily_summary_text(merchant_id: int, for_date: Optional[str] = None, conn=No
     except Exception:
         pass
     rev = format_taka_bn(pnl['gross_sales'])
-    net = format_taka_bn(pnl['net_profit'])
+    net = "Restricted" if hide_margins else format_taka_bn(pnl['net_profit'])
     text = (
         f"Daily Summary {y}:\n"
         f"Delivered: {delivered}\n"
@@ -367,4 +367,119 @@ def daily_summary_text(merchant_id: int, for_date: Optional[str] = None, conn=No
         f"Unresolved exceptions: {exc}"
     )
     return text
+
+
+def cash_flow_statement(merchant_id: int, from_date: str, to_date: str) -> Dict[str, Any]:
+    """
+    Computes double-entry cash flow statement from ledger journals on account = 'cash'.
+    """
+    # 1. Opening Cash
+    open_row = one(
+        "SELECT COALESCE(SUM(amount), 0) AS s FROM journal_lines WHERE merchant_id = ? AND account = 'cash' AND entry_date < ?",
+        merchant_id, from_date
+    )
+    opening_poisha = int(open_row['s']) if open_row else 0
+
+    # 2. Inflows & Outflows in period
+    lines = all(
+        """
+        SELECT j.kind, j.source, j.memo, l.party, l.amount
+        FROM journal_lines l
+        JOIN journals j ON j.id = l.journal_id
+        WHERE l.merchant_id = ? AND l.account = 'cash'
+          AND l.entry_date >= ? AND l.entry_date <= ?
+        """,
+        merchant_id, from_date, to_date
+    )
+
+    inflow_buckets = {'courier_settlement': 0, 'pos_sale': 0, 'owner_capital': 0, 'other_inflow': 0}
+    outflow_buckets = {'supplier_payment': 0, 'ad_spend': 0, 'packaging': 0, 'salary': 0, 'rent': 0, 'utilities': 0, 'owner_withdrawal': 0, 'other_expense': 0}
+
+    for l in lines:
+        amt = int(l['amount'])
+        k = l['kind']
+        if amt > 0:
+            if k in ('settlement', 'courier_settlement'):
+                inflow_buckets['courier_settlement'] += amt
+            elif k in ('pos_sale', 'sale'):
+                inflow_buckets['pos_sale'] += amt
+            elif k in ('owner_capital', 'capital'):
+                inflow_buckets['owner_capital'] += amt
+            else:
+                inflow_buckets['other_inflow'] += amt
+        elif amt < 0:
+            abs_amt = -amt
+            if k in ('supplier_payment', 'purchase'):
+                outflow_buckets['supplier_payment'] += abs_amt
+            elif k == 'ad_spend':
+                outflow_buckets['ad_spend'] += abs_amt
+            elif k in ('owner_withdrawal', 'withdrawal'):
+                outflow_buckets['owner_withdrawal'] += abs_amt
+            elif k in ('expense', 'other_expense'):
+                memo = (l.get('memo') or '').lower()
+                if 'packaging' in memo:
+                    outflow_buckets['packaging'] += abs_amt
+                elif 'rent' in memo:
+                    outflow_buckets['rent'] += abs_amt
+                elif 'salary' in memo:
+                    outflow_buckets['salary'] += abs_amt
+                elif 'utilities' in memo or 'internet' in memo:
+                    outflow_buckets['utilities'] += abs_amt
+                else:
+                    outflow_buckets['other_expense'] += abs_amt
+            elif k in outflow_buckets:
+                outflow_buckets[k] += abs_amt
+            else:
+                outflow_buckets['other_expense'] += abs_amt
+
+    total_in = sum(inflow_buckets.values())
+    total_out = sum(outflow_buckets.values())
+    net_change = total_in - total_out
+    closing_poisha = opening_poisha + net_change
+
+    # Cash accounts breakdown
+    accounts = all("SELECT * FROM cash_accounts WHERE merchant_id = ?", merchant_id)
+    acct_breakdown = []
+    for a in accounts:
+        acct_id_str = str(a['id'])
+        o_row = one(
+            "SELECT COALESCE(SUM(amount), 0) AS s FROM journal_lines WHERE merchant_id = ? AND account = 'cash' AND party = ? AND entry_date < ?",
+            merchant_id, acct_id_str, from_date
+        )
+        c_row = one(
+            "SELECT COALESCE(SUM(amount), 0) AS s FROM journal_lines WHERE merchant_id = ? AND account = 'cash' AND party = ? AND entry_date >= ? AND entry_date <= ?",
+            merchant_id, acct_id_str, from_date, to_date
+        )
+        op = int(o_row['s']) if o_row else 0
+        ch = int(c_row['s']) if c_row else 0
+        acct_breakdown.append({
+            'id': a['id'],
+            'name': a['name'],
+            'kind': a['kind'],
+            'opening_poisha': op,
+            'opening_taka': op / 100.0,
+            'change_poisha': ch,
+            'change_taka': ch / 100.0,
+            'closing_poisha': op + ch,
+            'closing_taka': (op + ch) / 100.0,
+        })
+
+    return {
+        'from_date': from_date,
+        'to_date': to_date,
+        'opening_cash_poisha': opening_poisha,
+        'opening_cash_taka': opening_poisha / 100.0,
+        'inflows': [{'category': k, 'label': k.replace('_', ' ').capitalize(), 'amount_poisha': v, 'amount_taka': v / 100.0} for k, v in inflow_buckets.items() if v > 0],
+        'total_inflows_poisha': total_in,
+        'total_inflows_taka': total_in / 100.0,
+        'outflows': [{'category': k, 'label': k.replace('_', ' ').capitalize(), 'amount_poisha': v, 'amount_taka': v / 100.0} for k, v in outflow_buckets.items() if v > 0],
+        'total_outflows_poisha': total_out,
+        'total_outflows_taka': total_out / 100.0,
+        'net_cash_change_poisha': net_change,
+        'net_cash_change_taka': net_change / 100.0,
+        'closing_cash_poisha': closing_poisha,
+        'closing_cash_taka': closing_poisha / 100.0,
+        'accounts_breakdown': acct_breakdown
+    }
+
 

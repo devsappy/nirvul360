@@ -40,10 +40,59 @@ class SnoozeInput(BaseModel):
     days: Optional[int] = None
 
 
+from datetime import datetime, timezone
+
 def _serialize(e: Dict[str, Any]) -> Dict[str, Any]:
     value = int(e.get('value') or 0)
     etype = e.get('type')
     exc_type = 'product_without_price' if etype == 'missing_cost' else etype
+
+    raw_details = e.get('details')
+    details = {}
+    if isinstance(raw_details, str):
+        try:
+            details = json.loads(raw_details)
+        except Exception:
+            details = {}
+    elif isinstance(raw_details, dict):
+        details = raw_details
+
+    raised_at_str = e.get('raised_at')
+    age_days = 0
+    if raised_at_str:
+        try:
+            dt = datetime.fromisoformat(raised_at_str.replace("Z", "+00:00"))
+            now = datetime.now(timezone.utc)
+            age_days = max(0, (now - dt).days)
+        except Exception:
+            age_days = 0
+
+    order_ref = None
+    customer_name = None
+    order_total_taka = None
+    settled_total_taka = None
+    if e.get('order_id'):
+        o = db_all("SELECT external_id, customer_name, total, cod_amount FROM orders WHERE id = ?", e['order_id'])
+        if o:
+            order_ref = o[0].get('external_id')
+            customer_name = o[0].get('customer_name')
+            order_total_taka = round((o[0].get('total') or 0) / 100, 2)
+    if details:
+        order_ref = order_ref or details.get('order_ref') or details.get('consignment_id') or details.get('external_id')
+        customer_name = customer_name or details.get('customer_name')
+        if details.get('order_total_poisha'):
+            order_total_taka = round(details['order_total_poisha'] / 100, 2)
+        if details.get('settled_poisha'):
+            settled_total_taka = round(details['settled_poisha'] / 100, 2)
+
+    product_sku = None
+    if e.get('product_id'):
+        p = db_all("SELECT sku, name FROM products WHERE id = ?", e['product_id'])
+        if p:
+            product_sku = p[0].get('sku')
+            if not customer_name:
+                customer_name = p[0].get('name')
+
     return {
         'id': e['id'],
         'type': exc_type,
@@ -56,7 +105,13 @@ def _serialize(e: Dict[str, Any]) -> Dict[str, Any]:
         'product_id': e.get('product_id'),
         'courier': e.get('courier'),
         'settlement_row_id': e.get('settlement_row_id'),
-        'details': e.get('details'),
+        'order_ref': order_ref or f"ORD-{e.get('order_id')}" if e.get('order_id') else None,
+        'customer_name': customer_name or 'Customer',
+        'product_sku': product_sku,
+        'order_total_taka': order_total_taka,
+        'settled_total_taka': settled_total_taka,
+        'age_days': age_days,
+        'details': details,
         'raised_at': e.get('raised_at'),
         'raised_by': e.get('raised_by'),
         'snoozed_until': e.get('snoozed_until'),
@@ -73,28 +128,11 @@ async def list_exception_queue(
     status: str = Query('open'),
     from_date: Optional[str] = Query(None, alias="from"),
     to_date: Optional[str] = Query(None, alias="to"),
+    sort: str = Query('oldest'), # oldest | newest
     current: Dict[str, Any] = Depends(get_current_user),
 ):
     """
-    GET /api/exceptions?status=open|resolved|all&from=&to=
-
-    Response:
-      {
-        "count": <open count, all types>,
-        "total_unresolved_poisha": <int>,
-        "unresolved_by_type": {"stuck_parcel": {"count": n, "total": poisha}, ...},
-        "items": [
-          {
-            "id", "type", "label", "status", "value_poisha", "value_taka",
-            "order_id", "product_id", "courier", "settlement_row_id",
-            "details": {...context...}, "raised_at", "raised_by",
-            "snoozed_until", "resolution", "resolution_data",
-            "resolved_at", "resolved_by",
-            "actions": ["mark_lost", ...]
-          }, ...
-        ]
-      }
-    Snoozed items stay listed but carry snoozed_until so the UI can dim them.
+    GET /api/exceptions?status=open|resolved|all&from=&to=&sort=oldest|newest
     """
     m_id = current["merchantId"]
     if status not in ('open', 'resolved', 'all'):
@@ -112,7 +150,12 @@ async def list_exception_queue(
     if to_date:
         sql += " AND raised_at <= ?"
         params.append(f"{to_date}T23:59:59.999Z" if len(to_date) == 10 else to_date)
-    sql += " ORDER BY raised_at DESC"
+    
+    if sort == 'oldest':
+        sql += " ORDER BY raised_at ASC"
+    else:
+        sql += " ORDER BY raised_at DESC"
+        
     rows = db_all(sql, *params)
 
     order_ids = [r['order_id'] for r in rows if r.get('order_id')]
@@ -124,9 +167,23 @@ async def list_exception_queue(
 
     totals = unresolved_totals(m_id)
     items = [_serialize(e) for e in rows]
+    
+    oldest_days = max([item['age_days'] for item in items if item['status'] == 'open'] or [0])
+
+    last_sync_time = None
+    try:
+        sync_row = db_all("SELECT last_sync_at FROM integration_connections WHERE merchant_id = ? ORDER BY id DESC LIMIT 1", m_id)
+        if sync_row and sync_row[0].get('last_sync_at'):
+            last_sync_time = sync_row[0]['last_sync_at']
+    except Exception:
+        last_sync_time = None
+
     return {
         'count': totals['count'],
         'total_unresolved_poisha': totals['total'],
+        'total_unresolved_taka': round(totals['total'] / 100, 2),
+        'oldest_days': oldest_days,
+        'last_sync_time': last_sync_time,
         'unresolved_by_type': totals['by_type'],
         **context_refs,
         'items': items,

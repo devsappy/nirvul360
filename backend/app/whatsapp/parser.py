@@ -27,7 +27,10 @@ def is_yes(text: str) -> bool:
 
 def is_no(text: str) -> bool:
     clean = text.lower().strip()
-    return clean in NO_WORDS or 'না' in clean
+    if clean in NO_WORDS:
+        return True
+    tokens = set(re.split(r'[\s,।!?-]+', clean))
+    return 'না' in tokens or bool(tokens & NO_WORDS)
 
 def extract_amount(text: str) -> Optional[int]:
     """Extract single unambiguous amount in poisha from message."""

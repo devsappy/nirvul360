@@ -14,16 +14,24 @@ import { MoneyTrackerCard } from '@/components/MoneyTrackerCard';
 import { MiscExpenseCard } from '@/components/MiscExpenseCard';
 import { OrdersView } from '@/components/OrdersView';
 import { ProductsView } from '@/components/ProductsView';
+import { ExpensesView } from '@/components/ExpensesView';
+import { SuppliersView } from '@/components/SuppliersView';
+import { WhatsAppAssistantView } from '@/components/WhatsAppAssistantView';
+import { IntegrationsView } from '@/components/IntegrationsView';
+import { SettingsView } from '@/components/SettingsView';
 import { PosView } from '@/components/PosView';
 import { MoneyView } from '@/components/MoneyView';
 import { SettlementsView } from '@/components/SettlementsView';
+import { ExceptionsView } from '@/components/ExceptionsView';
+import { TeamRolesView } from '@/components/TeamRolesView';
+import { ReportsView } from '@/components/ReportsView';
 import { IntegrationsModal } from '@/components/IntegrationsModal';
 import { ExpenseModal } from '@/components/ExpenseModal';
 import { PurchaseModal } from '@/components/PurchaseModal';
 import { WhatsAppDrawer } from '@/components/WhatsAppDrawer';
 import { DeveloperCockpit } from '@/components/DeveloperCockpit';
 import { TenantSwitcherModal } from '@/components/TenantSwitcherModal';
-import { SuperAdminUsersView } from '@/components/SuperAdminUsersView';
+import { AdminConsoleView } from '@/components/AdminConsoleView';
 import { User, DashboardData, Order, Product, CashAccount } from '@/types';
 import { api } from '@/lib/api';
 import { realtime } from '@/lib/events';
@@ -126,7 +134,7 @@ export default function Home() {
             setMerchant(res.merchant);
           }
           if (res.user.role === 'super_admin') {
-            setCurrentTab('users_overview');
+            setCurrentTab('admin_overview');
             setLoading(false);
           } else if (res?.merchant?.status === 'paused' && res.user.role !== 'admin') {
             setLoading(false);
@@ -199,14 +207,6 @@ export default function Home() {
   }, [user, loadData]);
 
   const handleTabChange = (tab: string) => {
-    if (tab === 'integrations') {
-      setIntegrationsOpen(true);
-      return;
-    }
-    if (tab === 'whatsapp') {
-      setWhatsAppOpen(true);
-      return;
-    }
     setCurrentTab(tab);
   };
 
@@ -311,8 +311,8 @@ export default function Home() {
 
       {/* 2. Main Content Area */}
       <main className="flex-1 p-6 md:p-8 lg:p-10 max-w-7xl mx-auto flex flex-col gap-6 overflow-x-hidden bg-[#FAFCF9]">
-        {/* Header with Search & Controls (for regular store users) */}
-        {user.role !== 'super_admin' && (
+        {/* Header with Search & Controls (for regular store dashboard) */}
+        {user.role !== 'super_admin' && currentTab === 'dashboard' && (
           <Header
             user={user}
             timeRange={timeRange}
@@ -350,12 +350,12 @@ export default function Home() {
         )}
 
         {/* Developer Impersonation Oversight Banner */}
-        {user.role === 'admin' && currentTab === 'dashboard' && (
+        {(user.role === 'admin' || user.role === 'super_admin') && currentTab === 'dashboard' && (
           <div className="bg-[#00432C] text-white border border-[#05572F] rounded-2xl p-3.5 px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
             <div className="flex items-center gap-3 text-xs">
               <span className="w-2.5 h-2.5 rounded-full bg-[#CAE4D8] animate-pulse shrink-0" />
               <span>
-                <strong>Developer Oversight Active:</strong> Currently inspecting live books &amp; dashboard for{' '}
+                <strong>Platform Oversight Active:</strong> Currently inspecting live books &amp; dashboard for{' '}
                 <strong className="underline text-[#FFFFFF] font-bold">{merchant?.name || 'Artisan Wear Bangladesh'}</strong>.
               </span>
             </div>
@@ -367,10 +367,10 @@ export default function Home() {
                 Switch Tenant ▾
               </button>
               <button
-                onClick={() => setCurrentTab('admin_cockpit')}
+                onClick={() => setCurrentTab('admin_overview')}
                 className="px-3 py-1.5 rounded-xl bg-[#025033] hover:bg-[#05572F] text-white text-xs font-bold transition border border-[#CAE4D8]"
               >
-                Exit to Developer Cockpit
+                Exit to Super Admin Console
               </button>
             </div>
           </div>
@@ -393,23 +393,24 @@ export default function Home() {
         )}
 
         {/* Loading state placeholder */}
-        {loading && !dashboard && user.role !== 'super_admin' ? (
+        {loading && !dashboard && !currentTab.startsWith('admin_') && currentTab !== 'users_overview' && user.role !== 'super_admin' ? (
           <div className="py-20 flex flex-col items-center justify-center gap-3 text-[#3A8067]">
             <div className="w-8 h-8 rounded-full border-2 border-[#CAE4D8] border-t-[#025033] animate-spin" />
             <span className="text-xs font-medium">Loading ledger &amp; cash accounts...</span>
           </div>
-        ) : user.role === 'super_admin' ? (
-          /* SUPER ADMIN VIEW: Dedicated Users Overview & Tenant Cockpit, NO store dashboard */
-          <>
-            {currentTab === 'admin_cockpit' ? (
-              <DeveloperCockpit
-                onInspectTenant={handleInspectTenant}
-                activeMerchantId={merchant?.id}
-              />
-            ) : (
-              <SuperAdminUsersView onRefreshParent={loadData} />
-            )}
-          </>
+        ) : currentTab === 'admin_cockpit' ? (
+          <DeveloperCockpit
+            onInspectTenant={handleInspectTenant}
+            activeMerchantId={merchant?.id}
+          />
+        ) : (currentTab.startsWith('admin_') || currentTab === 'users_overview' || (user.role === 'super_admin' && !['dashboard', 'attention', 'orders', 'settlements', 'products', 'inventory', 'suppliers', 'expenses', 'reports', 'pos', 'integrations', 'whatsapp', 'team', 'settings', 'money'].includes(currentTab))) ? (
+          /* SUPER ADMIN VIEW: Nirvul360 Admin Console matching Nirvul360 Admin Panel.pdf */
+          <AdminConsoleView
+            currentTab={currentTab === 'users_overview' ? 'admin_users' : currentTab}
+            onTabChange={setCurrentTab}
+            onInspectTenant={handleInspectTenant}
+            showToast={showToast}
+          />
         ) : (
           <>
             {/* View: Dashboard */}
@@ -476,18 +477,16 @@ export default function Home() {
               </div>
             )}
 
-            {/* View: Orders */}
+            {/* View: Orders (Screen 10) */}
             {currentTab === 'orders' && (
               <OrdersView
-                orders={orders}
-                onRefresh={loadData}
-                onOpenOrderModal={() => showToast('Order creation modal opened')}
+                onRefreshParent={loadData}
                 showToast={showToast}
               />
             )}
 
-            {/* View: Inventory */}
-            {currentTab === 'products' && (
+            {/* View: Inventory (Screen 6) */}
+            {(currentTab === 'products' || currentTab === 'inventory') && (
               <ProductsView
                 products={products}
                 onRefresh={loadData}
@@ -496,11 +495,13 @@ export default function Home() {
               />
             )}
 
-            {/* View: POS Offline Store Terminal */}
+            {/* View: POS Retail Register (Screen 8) */}
             {currentTab === 'pos' && (
               <PosView
                 user={user}
                 onRefresh={loadData}
+                merchantName={merchant?.name}
+                showToast={showToast}
               />
             )}
 
@@ -522,35 +523,79 @@ export default function Home() {
               />
             )}
 
-            {/* View: Courier Settlements */}
+            {/* View: Courier Settlements (Screen 11) */}
             {currentTab === 'settlements' && (
               <SettlementsView
-                orders={orders}
-                onRefresh={loadData}
-                onOpenIntegrations={() => setIntegrationsOpen(true)}
+                onRefreshParent={loadData}
                 showToast={showToast}
               />
             )}
 
-            {/* View: Needs Attention / Settings */}
-            {(currentTab === 'attention' || currentTab === 'settings') && (
-              <div className="bg-[#FFFFFF] border border-[#E5EAE7] rounded-2xl p-6 shadow-2xs flex flex-col gap-4">
-                <h2 className="text-base font-bold text-[#025033] capitalize tracking-tight">
-                  {currentTab.replace('_', ' ')}
-                </h2>
-                <p className="text-xs text-[#3A8067]">
-                  {currentTab === 'attention' && 'Exception items waiting for resolution: stuck parcels, short settlements, and uncosted products.'}
-                  {currentTab === 'settings' && 'Merchant credentials, API webhooks, Supabase cloud sync, and user access.'}
-                </p>
-                <div className="pt-2">
-                  <button
-                    onClick={() => setCurrentTab('dashboard')}
-                    className="text-xs font-semibold bg-[#025033] hover:bg-[#05572F] text-[#FFFFFF] px-4 py-2 rounded-xl transition-colors"
-                  >
-                    Return to Dashboard
-                  </button>
-                </div>
-              </div>
+            {/* View: Expenses (Screen 1) */}
+            {currentTab === 'expenses' && (
+              <ExpensesView
+                onNavigate={(t) => setCurrentTab(t)}
+                onOpenAddExpenseModal={() => setExpenseModalOpen(true)}
+              />
+            )}
+
+            {/* View: Suppliers & Purchases (Screen 2) */}
+            {currentTab === 'suppliers' && (
+              <SuppliersView
+                products={products}
+                onOpenNewPurchase={() => setPurchaseModalOpen(true)}
+              />
+            )}
+
+            {/* View: WhatsApp Assistant (Screen 3) */}
+            {currentTab === 'whatsapp' && (
+              <WhatsAppAssistantView
+                onOpenDrawer={() => setWhatsAppOpen(true)}
+              />
+            )}
+
+            {/* View: Integrations (Screen 4) */}
+            {currentTab === 'integrations' && (
+              <IntegrationsView
+                onOpenSyncLog={() => setIntegrationsOpen(true)}
+                onNavigateToSettlements={() => setCurrentTab('settlements')}
+                onShowToast={showToast}
+              />
+            )}
+
+            {/* View: Settings (Screen 5) */}
+            {currentTab === 'settings' && (
+              <SettingsView
+                merchant={merchant}
+                onRefresh={loadData}
+              />
+            )}
+
+            {/* View: Needs Attention / Discrepancy Quarantine (Screen 9) */}
+            {currentTab === 'attention' && (
+              <ExceptionsView
+                onRefreshParent={loadData}
+                showToast={showToast}
+                netProfitPoisha={dashboard?.pnl?.net_profit ?? 0}
+              />
+            )}
+
+            {/* View: Reports & SKU Economics (Screen 12) */}
+            {currentTab === 'reports' && (
+              <ReportsView
+                userRole={user?.role}
+                showToast={showToast}
+              />
+            )}
+
+            {/* View: Team & Roles (Screen 7) */}
+            {currentTab === 'team' && (
+              <TeamRolesView
+                user={user}
+                merchantName={merchant?.name}
+                onRefresh={loadData}
+                showToast={showToast}
+              />
             )}
           </>
         )}

@@ -7,17 +7,17 @@ import { formatTaka } from '@/lib/api';
 interface DashboardKpisProps {
   kpis: {
     delivered_sales: number;
-    gross_profit: number;
-    net_profit: number;
+    gross_profit?: number | null;
+    net_profit?: number | null;
     orders_placed: number;
     delivery_rate: number;
     held_at_couriers: number;
-    net_margin_pct: number;
+    net_margin_pct?: number | null;
     orders_in_transit: number;
     returned_orders: number;
     courier_accounts_count: number;
     delivered_orders?: number;
-    gross_margin_pct?: number;
+    gross_margin_pct?: number | null;
     settled_orders?: number;
     reconciled_orders?: number;
     misc_expenses?: number;
@@ -26,7 +26,7 @@ interface DashboardKpisProps {
 
 export function DashboardKpis({ kpis }: DashboardKpisProps) {
   const delivered = kpis.delivered_orders ?? 0;
-  const grossMarginPct = kpis.gross_margin_pct ?? 0;
+  const grossMarginPct = kpis.gross_margin_pct;
   const settled = kpis.settled_orders ?? 0;
 
   const cards = [
@@ -41,8 +41,8 @@ export function DashboardKpis({ kpis }: DashboardKpisProps) {
     },
     {
       title: 'Gross profit',
-      value: formatTaka(kpis.gross_profit),
-      badge: `${grossMarginPct.toFixed(1)}% margin`,
+      value: kpis.gross_profit !== null && kpis.gross_profit !== undefined ? formatTaka(kpis.gross_profit) : 'Restricted',
+      badge: grossMarginPct !== null && grossMarginPct !== undefined ? `${grossMarginPct.toFixed(1)}% margin` : 'Restricted',
       badgeType: 'green',
       subtext: 'Revenue minus COGS',
       note: 'Unit purchase costs matched to sold items',
@@ -50,9 +50,9 @@ export function DashboardKpis({ kpis }: DashboardKpisProps) {
     },
     {
       title: 'Net profit',
-      value: formatTaka(kpis.net_profit),
-      badge: kpis.net_profit < 0 ? 'Net loss' : 'Net profit',
-      badgeType: kpis.net_profit < 0 ? 'muted' : 'green',
+      value: kpis.net_profit !== null && kpis.net_profit !== undefined ? formatTaka(kpis.net_profit) : 'Restricted',
+      badge: kpis.net_profit !== null && kpis.net_profit !== undefined ? (kpis.net_profit < 0 ? 'Net loss' : 'Net profit') : 'Restricted',
+      badgeType: kpis.net_profit !== null && kpis.net_profit !== undefined && kpis.net_profit < 0 ? 'muted' : 'green',
       subtext: 'After ads, rent & freight',
       valueColor: 'text-[#025033]',
       note: 'Operating costs deducted in real-time',
@@ -87,10 +87,10 @@ export function DashboardKpis({ kpis }: DashboardKpisProps) {
     },
     {
       title: 'Net margin',
-      value: `${kpis.net_margin_pct.toFixed(1)}%`,
-      badge: kpis.net_margin_pct < 0 ? 'Loss' : 'Profit',
+      value: kpis.net_margin_pct !== null && kpis.net_margin_pct !== undefined ? `${kpis.net_margin_pct.toFixed(1)}%` : 'Restricted',
+      badge: kpis.net_margin_pct !== null && kpis.net_margin_pct !== undefined ? (kpis.net_margin_pct < 0 ? 'Loss' : 'Profit') : 'Restricted',
       badgeType: 'hero',
-      subtext: kpis.net_margin_pct < 0 ? 'Operating at loss' : 'Healthy profitability',
+      subtext: kpis.net_margin_pct !== null && kpis.net_margin_pct !== undefined ? (kpis.net_margin_pct < 0 ? 'Operating at loss' : 'Healthy profitability') : 'Masked for staff',
       isHero: true,
       note: 'Net margin on recognized sales',
     },

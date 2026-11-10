@@ -38,6 +38,7 @@ class PosCheckoutInput(BaseModel):
 @router.get("/products")
 async def list_pos_products(
     q: Optional[str] = None,
+    limit: Optional[int] = Query(None),
     current: Dict[str, Any] = Depends(get_current_user)
 ):
     """
@@ -56,15 +57,45 @@ async def list_pos_products(
         params.extend([q_wild, q_wild])
 
     sql += " ORDER BY name ASC"
+    if limit and limit > 0:
+        sql += f" LIMIT {int(limit)}"
+    elif not q:
+        sql += " LIMIT 250"
+
     products = all(sql, *params)
+    if not products:
+        return {"products": [], "total": 0}
+
+    p_ids = [p["id"] for p in products]
+
+    # Batch fetch stock levels in 1 single query
+    stock_map = {}
+    if p_ids:
+        stocks_rows = all(
+            "SELECT product_id, COALESCE(SUM(qty), 0) as q FROM stock_movements WHERE product_id IN (" +
+            ",".join("?" * len(p_ids)) + ") GROUP BY product_id",
+            *p_ids
+        )
+        stock_map = {r["product_id"]: int(r["q"]) for r in stocks_rows}
+
+    # Batch fetch price history in 1 single query
+    cost_map = {}
+    if p_ids:
+        costs_rows = all(
+            "SELECT product_id, purchase_price, effective_from FROM product_price_history WHERE product_id IN (" +
+            ",".join("?" * len(p_ids)) + ") ORDER BY effective_from ASC, id ASC",
+            *p_ids
+        )
+        for r in costs_rows:
+            if r["effective_from"] <= t or r["product_id"] not in cost_map:
+                cost_map[r["product_id"]] = r["purchase_price"]
 
     items = []
     for p in products:
         p_id = p["id"]
-        c = cost_at(p_id, t)
-        cost = c["purchase_price"] if c else None
+        cost = cost_map.get(p_id)
         sell = p.get("selling_price") or 0
-        stock = stock_qty(p_id)
+        stock = stock_map.get(p_id, 0)
 
         items.append({
             "id": p_id,
@@ -162,9 +193,10 @@ async def pos_checkout(
             'date': today(),
         })
 
-        # 4. Set professional POS receipt number
+        # 4. Set professional POS receipt number and save payment method in consignment_id
         receipt_no = f"POS-{order_id:05d}"
-        update('orders', order_id, {'external_id': receipt_no})
+        pm = data.payment_method or 'cash'
+        update('orders', order_id, {'external_id': receipt_no, 'consignment_id': pm})
 
         # 5. Log audit telemetry
         total_bdt = total_poisha / 100
@@ -183,7 +215,7 @@ async def pos_checkout(
                 'receipt_no': receipt_no,
                 'total': total_bdt,
                 'items_count': sum(it.qty for it in data.items),
-                'payment_method': data.payment_method or 'cash',
+                'payment_method': pm,
                 'customer': data.customer_name or 'Walk-in Customer',
             }
         )
@@ -206,7 +238,7 @@ async def pos_checkout(
             "time": now_iso(),
             "customer_name": data.customer_name or "Walk-in Customer",
             "customer_phone": data.customer_phone or "",
-            "payment_method": data.payment_method or "cash",
+            "payment_method": pm,
             "items": receipt_items,
             "items_count": sum(it.qty for it in data.items),
             "subtotal": subtotal_bdt,
@@ -230,23 +262,49 @@ async def list_pos_orders(
 
     sql = """
         SELECT * FROM orders
-        WHERE merchant_id = ? AND (source = 'pos' OR address LIKE '%Over the Counter%')
+        WHERE merchant_id = ? AND (source = 'pos' OR address LIKE ?)
         ORDER BY id DESC
         LIMIT ?
     """
-    rows = all(sql, m_id, limit)
+    rows = all(sql, m_id, "%Over the Counter%", limit)
 
     enriched_orders = []
     today_total_poisha = 0
     today_count = 0
+    cash_taken_poisha = 0
+    bkash_taken_poisha = 0
+    nagad_taken_poisha = 0
+    card_taken_poisha = 0
 
     for r in rows:
         o_id = r["id"]
         items = order_items(o_id)
         is_today = r.get("order_date") == t or (r.get("delivered_date") == t)
+        tot = r.get("total") or 0
+        pm = r.get("consignment_id") or "cash"
+
         if is_today:
-            today_total_poisha += r.get("total") or 0
+            today_total_poisha += tot
             today_count += 1
+            pm_lower = pm.lower()
+            if 'cash' in pm_lower:
+                cash_taken_poisha += tot
+            elif 'bkash' in pm_lower:
+                bkash_taken_poisha += tot
+            elif 'nagad' in pm_lower:
+                nagad_taken_poisha += tot
+            elif 'card' in pm_lower:
+                card_taken_poisha += tot
+            else:
+                cash_taken_poisha += tot
+
+        time_str = ""
+        placed_at = r.get("placed_at") or r.get("created_at")
+        if placed_at:
+            try:
+                time_str = placed_at.split("T")[1][:5]
+            except Exception:
+                time_str = ""
 
         enriched_orders.append({
             "id": o_id,
@@ -255,8 +313,10 @@ async def list_pos_orders(
             "delivered_date": r.get("delivered_date"),
             "customer_name": r.get("customer_name") or "Walk-in Customer",
             "customer_phone": r.get("customer_phone") or "",
-            "total": r.get("total") or 0,
-            "total_bdt": (r.get("total") or 0) / 100,
+            "payment_method": pm.capitalize() if pm else "Cash",
+            "time": time_str,
+            "total": tot,
+            "total_bdt": tot / 100,
             "discount": (r.get("discount") or 0) / 100,
             "status": r.get("status"),
             "posting_state": r.get("posting_state"),
@@ -274,6 +334,10 @@ async def list_pos_orders(
         "summary": {
             "today_orders_count": today_count,
             "today_revenue_bdt": today_total_poisha / 100,
+            "cash_taken_bdt": cash_taken_poisha / 100,
+            "bkash_taken_bdt": bkash_taken_poisha / 100,
+            "nagad_taken_bdt": nagad_taken_poisha / 100,
+            "card_taken_bdt": card_taken_poisha / 100,
             "total_pos_orders": len(enriched_orders),
         }
     }

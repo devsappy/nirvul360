@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from typing import Dict, Any, Optional
 from app.api.auth import get_current_user
 from app.domain.reports import dashboard, drilldown, profit_and_loss, cash_position
+from app.domain.roles import can_view_margins, can_view_cash_flow
 from app.domain.exceptions import unresolved_totals
 from app.domain.ledger import balances_by_party
 from app.db.session import all, one
@@ -142,23 +143,33 @@ async def get_dashboard(
         "supabase": bool(__import__('os').getenv('SUPABASE_URL')),
     }
 
+    role = current["user"]["role"]
+    hide_margins = not can_view_margins(role)
+    hide_cash = not can_view_cash_flow(role)
+
+    if hide_margins:
+        kpis["gross_profit"] = None
+        kpis["net_profit"] = None
+        kpis["net_margin_pct"] = None
+        kpis["gross_margin_pct"] = None
+
     return {
         "range": {
             "from": f,
             "to": t,
             "label": "Last 30 Days" if not from_date else f"{f} to {t}"
         },
-        "pnl": pnl,
-        "today_pnl": today_pnl,
+        "pnl": None if hide_margins else pnl,
+        "today_pnl": None if hide_margins else today_pnl,
         "kpis": kpis,
         "pipeline": pipeline,
         "today_deliveries": today_deliveries,
         "alerts": alerts,
         "integrations": integrations,
         # Legacy backward-compatibility
-        "profit": pnl,
-        "today_profit": today_pnl.get("net_profit", 0),
-        "cash": cash_info,
+        "profit": None if hide_margins else pnl,
+        "today_profit": None if hide_margins else today_pnl.get("net_profit", 0),
+        "cash": None if hide_cash else cash_info,
         "attention": exc,
         "operations": ops,
     }
@@ -170,6 +181,12 @@ async def trace(
     to_date: Optional[str] = Query(None, alias="to"),
     current: Dict[str, Any] = Depends(get_current_user)
 ):
+    role = current["user"]["role"]
+    if not can_view_margins(role) and (metric in ("net_profit", "gross_profit") or metric.startswith("section:cogs")):
+        raise HTTPException(
+            status_code=403,
+            detail="Permission denied: Trace for net profit and margins is restricted to store owners."
+        )
     m_id = current["merchantId"]
     f = from_date or month_start(today())
     t = to_date or month_end(today())

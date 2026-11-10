@@ -251,6 +251,7 @@ export interface ExpenseEntryItem {
   source: ExpenseSource | string;
   source_label: string;
   confirmed_by?: string;
+  created_by?: string;
   is_owner_withdrawal?: boolean;
 }
 
@@ -259,6 +260,7 @@ export interface RecurringExpenseItem {
   head: string;
   title?: string;
   name?: string;
+  amount?: number;
   amount_poisha: number;
   amount_taka: number;
   posts_on_day: number;

@@ -38,8 +38,8 @@ export function Header({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         {/* Eyebrow & Main Greeting */}
         <div className="flex flex-col">
-          <span className="text-[11px] font-bold tracking-wider text-[#3A8067] uppercase">
-            {timeRange === 'month' ? 'THIS MONTH' : timeRange === 'last30' ? 'LAST 30 DAYS' : timeRange === 'quarter' ? 'THIS QUARTER' : 'THIS YEAR'}
+          <span className="text-[11px] font-bold text-[#3A8067] uppercase tracking-normal">
+            {timeRange === 'month' ? 'This Month' : timeRange === 'last30' ? 'Last 30 Days' : timeRange === 'quarter' ? 'This Quarter' : 'This Year'}
           </span>
           <h1 className="text-2xl md:text-3xl font-extrabold text-[#025033] tracking-tight leading-tight">
             Good morning, {firstName}
@@ -92,19 +92,19 @@ export function Header({
           {/* Quick Add Expense Button */}
           <button
             onClick={onOpenExpenseModal}
-            className="flex items-center gap-1.5 bg-[#FFFFFF] border border-[#E5EAE7] hover:border-[#3A8067] text-[#025033] font-semibold text-xs px-3 py-2 rounded-xl transition shadow-2xs hover:bg-[#E6F7EF]"
+            className="flex items-center gap-1.5 bg-[#FFFFFF] border border-[#E5EAE7] hover:border-[#3A8067] text-[#025033] font-semibold text-xs px-3.5 py-2 rounded-xl transition shadow-2xs hover:bg-[#E6F7EF]"
           >
             <PlusIcon className="w-3.5 h-3.5 text-[#025033]" />
-            <span>+ Expense</span>
+            <span>Expense</span>
           </button>
 
           {/* Quick Add Purchase Button */}
           <button
             onClick={onOpenPurchaseModal}
-            className="flex items-center gap-1.5 bg-[#FFFFFF] border border-[#E5EAE7] hover:border-[#3A8067] text-[#025033] font-semibold text-xs px-3 py-2 rounded-xl transition shadow-2xs hover:bg-[#E6F7EF]"
+            className="flex items-center gap-1.5 bg-[#FFFFFF] border border-[#E5EAE7] hover:border-[#3A8067] text-[#025033] font-semibold text-xs px-3.5 py-2 rounded-xl transition shadow-2xs hover:bg-[#E6F7EF]"
           >
             <PlusIcon className="w-3.5 h-3.5 text-[#025033]" />
-            <span>+ Purchase</span>
+            <span>Purchase</span>
           </button>
 
           {/* Refresh Button */}

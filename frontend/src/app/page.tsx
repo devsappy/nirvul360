@@ -206,8 +206,23 @@ export default function Home() {
     };
   }, [user, loadData]);
 
+  // Sync active tab with URL query parameter
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      if (tabParam) {
+        setCurrentTab(tabParam);
+      }
+    }
+  }, []);
+
   const handleTabChange = (tab: string) => {
     setCurrentTab(tab);
+    if (typeof window !== 'undefined') {
+      const url = tab === 'dashboard' ? window.location.pathname : `?tab=${tab}`;
+      window.history.replaceState(null, '', url);
+    }
   };
 
   const handleSignOut = async () => {
@@ -534,7 +549,8 @@ export default function Home() {
             {/* View: Expenses (Screen 1) */}
             {currentTab === 'expenses' && (
               <ExpensesView
-                onNavigate={(t) => setCurrentTab(t)}
+                currentUser={user}
+                onNavigate={(t) => handleTabChange(t)}
                 onOpenAddExpenseModal={() => setExpenseModalOpen(true)}
               />
             )}

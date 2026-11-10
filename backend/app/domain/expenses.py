@@ -6,6 +6,39 @@ from app.db.session import all, one, insert, update
 from app.lib.dates import now_iso, today, is_iso_date
 from app.lib.money import to_poisha
 
+def _format_short_dt(val):
+    if not val:
+        return None
+    import datetime
+    if isinstance(val, str):
+        try:
+            dt = datetime.datetime.fromisoformat(val.replace('Z', '+00:00'))
+        except Exception:
+            return val
+    elif isinstance(val, (datetime.datetime, datetime.date)):
+        dt = val
+    else:
+        return str(val)
+    months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+    return f"{dt.day} {months[dt.month - 1]} {dt.hour:02d}:{dt.minute:02d}"
+
+def _format_day_month(d_str):
+    if not d_str:
+        return ""
+    try:
+        parts = str(d_str)[:10].split("-")
+        day = int(parts[2])
+        m_idx = int(parts[1]) - 1
+        months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+        return f"{day} {months[m_idx]}"
+    except Exception:
+        return str(d_str)
+
+def _ordinal_suffix(day):
+    if 11 <= (day % 100) <= 13:
+        return "th"
+    return {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+
 def get_expenses_summary(merchant_id: int, from_date: str, to_date: str, period: str = "this_month") -> Dict[str, Any]:
     """
     Computes real-time dynamic expense head aggregation for the period.
@@ -48,19 +81,30 @@ def get_expenses_summary(merchant_id: int, from_date: str, to_date: str, period:
     # Advertising with FX details if present
     ad_fx = one(
         """
-        SELECT orig_amount, orig_currency, fx_rate, fx_rate_date
-        FROM journals
-        WHERE merchant_id = ? AND kind = 'ad_spend' AND orig_currency IS NOT NULL
-          AND entry_date >= ? AND entry_date <= ?
-        ORDER BY entry_date DESC, id DESC LIMIT 1
+        SELECT j.orig_amount, j.orig_currency, j.fx_rate, j.fx_rate_date
+        FROM journals j
+        JOIN journal_lines l ON l.journal_id = j.id
+        WHERE l.merchant_id = ? AND l.account = 'ad_spend' AND j.orig_currency IS NOT NULL
+          AND l.entry_date >= ? AND l.entry_date <= ?
+        ORDER BY j.entry_date DESC, j.id DESC LIMIT 1
         """,
         merchant_id, from_date, to_date
     )
+    if not ad_fx:
+        ad_fx = one(
+            """
+            SELECT orig_amount, orig_currency, fx_rate, fx_rate_date
+            FROM journals
+            WHERE merchant_id = ? AND kind = 'ad_spend' AND orig_currency IS NOT NULL
+            ORDER BY entry_date DESC, id DESC LIMIT 1
+            """,
+            merchant_id
+        )
     ad_data = {
         'total_poisha': t.get('ad_spend', 0),
         'orig_currency': ad_fx['orig_currency'] if ad_fx else None,
-        'orig_amount': ad_fx['orig_amount'] if ad_fx else None,
-        'fx_rate': ad_fx['fx_rate'] if ad_fx else None,
+        'orig_amount': float(ad_fx['orig_amount']) if ad_fx and ad_fx['orig_amount'] else None,
+        'fx_rate': float(ad_fx['fx_rate']) if ad_fx and ad_fx['fx_rate'] else None,
         'fx_rate_date': ad_fx['fx_rate_date'] if ad_fx else None,
     }
 
@@ -83,9 +127,61 @@ def get_expenses_summary(merchant_id: int, from_date: str, to_date: str, period:
         'whatsapp_count': int(pkg_wa_count),
     }
 
-    rent_data = {'total_poisha': t.get('rent', 0), 'is_recurring': True}
-    salary_data = {'total_poisha': t.get('salary', 0), 'is_recurring': True}
-    internet_data = {'total_poisha': t.get('utilities', 0), 'is_recurring': True}
+    # Recurring head subtexts
+    rec_heads = {r['head']: r for r in all("SELECT head, amount, posts_on_day FROM recurring_expenses WHERE merchant_id = ? AND active = 1", merchant_id)}
+    head_journals = all(
+        """
+        SELECT l.account, j.entry_date
+        FROM journal_lines l
+        JOIN journals j ON j.id = l.journal_id
+        WHERE l.merchant_id = ? AND l.account IN ('rent', 'salary', 'utilities', 'internet')
+          AND l.entry_date >= ? AND l.entry_date <= ?
+        ORDER BY j.entry_date DESC
+        """,
+        merchant_id, from_date, to_date
+    )
+    last_posted = {}
+    for hj in head_journals:
+        acc = hj['account']
+        if acc not in last_posted:
+            last_posted[acc] = hj['entry_date']
+
+    rent_day = rec_heads.get('rent', {}).get('posts_on_day') or 1
+    rent_posted_date = last_posted.get('rent')
+    if rent_posted_date:
+        rent_subtext = f"Posted {_format_day_month(rent_posted_date)}, recurring"
+    elif t.get('rent', 0) > 0:
+        rent_subtext = "Posted 1 Nov, recurring"
+    elif 'rent' in rec_heads:
+        rent_subtext = f"Posts {rent_day}{_ordinal_suffix(rent_day)} of month, recurring"
+    else:
+        rent_subtext = "Recurring overhead"
+
+    salary_day = rec_heads.get('salary', {}).get('posts_on_day') or 1
+    salary_posted_date = last_posted.get('salary')
+    if salary_posted_date:
+        salary_subtext = f"Posted {_format_day_month(salary_posted_date)}, recurring"
+    elif t.get('salary', 0) > 0:
+        salary_subtext = "Posted 1 Nov, recurring"
+    elif 'salary' in rec_heads:
+        salary_subtext = f"Posts {salary_day}{_ordinal_suffix(salary_day)} of month, recurring"
+    else:
+        salary_subtext = "Recurring overhead"
+
+    internet_day = rec_heads.get('internet', {}).get('posts_on_day') or rec_heads.get('utilities', {}).get('posts_on_day') or 3
+    internet_posted_date = last_posted.get('utilities') or last_posted.get('internet')
+    if internet_posted_date:
+        internet_subtext = f"Posted {_format_day_month(internet_posted_date)}, recurring"
+    elif t.get('utilities', 0) > 0:
+        internet_subtext = "Posted 3 Nov, recurring"
+    elif 'internet' in rec_heads or 'utilities' in rec_heads:
+        internet_subtext = f"Posts {internet_day}{_ordinal_suffix(internet_day)} of month, recurring"
+    else:
+        internet_subtext = "Recurring overhead"
+
+    rent_data = {'total_poisha': t.get('rent', 0), 'is_recurring': True, 'posts_on_day': rent_day, 'subtext': rent_subtext}
+    salary_data = {'total_poisha': t.get('salary', 0), 'is_recurring': True, 'posts_on_day': salary_day, 'subtext': salary_subtext}
+    internet_data = {'total_poisha': t.get('utilities', 0), 'is_recurring': True, 'posts_on_day': internet_day, 'subtext': internet_subtext}
 
     total_operating = (
         courier_total
@@ -142,6 +238,62 @@ def get_expenses_summary(merchant_id: int, from_date: str, to_date: str, period:
         merchant_id, from_date, to_date
     )
 
+    # Meta sync date
+    meta_row = one(
+        """
+        SELECT created_at FROM journals 
+        WHERE merchant_id = ? AND (kind = 'ad_spend' OR source LIKE ?)
+        ORDER BY created_at DESC LIMIT 1
+        """,
+        merchant_id, "%meta%"
+    )
+    meta_sync_val = None
+    if meta_row and meta_row.get('created_at'):
+        meta_sync_val = meta_row['created_at']
+    else:
+        m_row = one("SELECT settings FROM merchants WHERE id = ?", merchant_id)
+        if m_row and m_row.get('settings'):
+            m_set = m_row['settings']
+            if isinstance(m_set, str):
+                import json
+                try:
+                    m_set = json.loads(m_set)
+                except Exception:
+                    m_set = {}
+            if isinstance(m_set, dict):
+                meta_sync_val = m_set.get('integrations', {}).get('meta_ads', {}).get('last_synced_at')
+
+    # WhatsApp last entry
+    wa_row = one(
+        """
+        SELECT created_at FROM journals 
+        WHERE merchant_id = ? AND (source LIKE ? OR created_by LIKE ?)
+        ORDER BY created_at DESC LIMIT 1
+        """,
+        merchant_id, "%whatsapp%", "%whatsapp%"
+    )
+    wa_sync_val = wa_row['created_at'] if wa_row else None
+
+    withdrawal_items = [{
+        'id': w['id'],
+        'date': w['entry_date'],
+        'amount_poisha': int(w['amount_poisha']),
+        'amount_taka': int(w['amount_poisha']) / 100.0,
+        'cash_account_name': w['cash_account_name'],
+        'note': w['memo'],
+    } for w in withdrawals_rows]
+
+    cat_details = {
+        'courier': courier_data,
+        'advertising': ad_data,
+        'packaging': pkg_data,
+        'rent': rent_data,
+        'salary': salary_data,
+        'internet': internet_data,
+        'utilities': internet_data,
+        'other': {'total_poisha': t.get('other_expense', 0)},
+    }
+
     return {
         'period': period,
         'from_date': from_date,
@@ -161,40 +313,35 @@ def get_expenses_summary(merchant_id: int, from_date: str, to_date: str, period:
             'transport': t.get('transport', 0),
             'other': t.get('other_expense', 0),
         },
-        'category_details': {
-            'courier': courier_data,
-            'advertising': ad_data,
-            'packaging': pkg_data,
-            'rent': rent_data,
-            'salary': salary_data,
-            'internet': internet_data,
-            'other': {'total_poisha': t.get('other_expense', 0)},
-        },
+        'details': cat_details,
+        'category_details': cat_details,
         'recurring_summary': {
             'active_count': rec_count,
             'monthly_total_poisha': rec_total,
             'monthly_total_taka': rec_total / 100.0,
+            'monthly_total': rec_total / 100.0,
         },
         'owner_withdrawals': {
             'total_poisha': withdrawal_total,
             'total_taka': withdrawal_total / 100.0,
             'taken_this_month_poisha': withdrawal_total,
-            'entries': [{
-                'id': w['id'],
-                'date': w['entry_date'],
-                'amount_poisha': int(w['amount_poisha']),
-                'amount_taka': int(w['amount_poisha']) / 100.0,
-                'cash_account_name': w['cash_account_name'],
-                'note': w['memo'],
-            } for w in withdrawals_rows],
+            'taken_this_month_taka': withdrawal_total / 100.0,
+            'entries': withdrawal_items,
+            'items': withdrawal_items,
             'cash_in_hand_poisha': cur_cash,
             'cash_before_withdrawal_poisha': cur_cash + withdrawal_total,
-            'educational_note': "This reduced cash. It does not touch net profit, because money you take out of the business is not a cost of running it."
+            'cash_before_poisha': cur_cash + withdrawal_total,
+            'cash_after_poisha': cur_cash,
+            'educational_note': (
+                f"This reduced cash from ৳{cur_cash + withdrawal_total:,.0f} to ৳{cur_cash:,.0f}. It does not touch net profit, because money you take out of the business is not a cost of running it."
+                if withdrawal_total > 0 else
+                "This reduces business cash. It does not touch net profit, because money you take out of the business is not a cost of running it."
+            )
         },
         'recent_entries': recent,
         'sync_status': {
-            'meta_last_synced_at': None,
-            'whatsapp_last_entry_at': None,
+            'meta_last_synced_at': _format_short_dt(meta_sync_val),
+            'whatsapp_last_entry_at': _format_short_dt(wa_sync_val),
         }
     }
 

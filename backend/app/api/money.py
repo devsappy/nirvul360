@@ -592,6 +592,22 @@ async def get_integrations_overview(current: Dict[str, Any] = Depends(get_curren
             ]
         },
         {
+            "key": "daraz",
+            "name": "Daraz Open Platform",
+            "category": "store_orders",
+            "badge": "DZ",
+            "status": "not_connected",
+            "status_label": "Not connected",
+            "last_sync": None,
+            "failures_count": 0,
+            "failures_label": "Failures, 7 days: 0",
+            "brings_in": "Daraz marketplace orders, returns & payouts",
+            "actions": [
+                {"label": "Connect Daraz", "action": "connect_daraz", "primary": True},
+                {"label": "Settings", "action": "settings"}
+            ]
+        },
+        {
             "key": "bkash_nagad",
             "name": "bKash & Nagad",
             "category": "payments",

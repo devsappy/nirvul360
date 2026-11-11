@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { apiExpenses, formatTaka } from '@/lib/api';
+import { apiExpenses } from '@/lib/api';
 import { ExpensesSummaryResponse, RecurringExpensesResponse, ExpenseEntryItem, User } from '@/types';
 
 interface ExpensesViewProps {
@@ -107,6 +107,10 @@ export function ExpensesView({ currentUser, onNavigate, onOpenAddExpenseModal }:
   const [formDescription, setFormDescription] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
   const formRef = useRef<HTMLDivElement>(null);
+
+  // Fixed Cost Prorated State (PDF Requirement 9)
+  const [fixedCostMonthly, setFixedCostMonthly] = useState<number>(100000);
+  const [customFxRate, setCustomFxRate] = useState<number>(122.50);
 
   // New recurring expense inline in modal
   const [newRecHead, setNewRecHead] = useState('rent');
@@ -306,85 +310,119 @@ export function ExpensesView({ currentUser, onNavigate, onOpenAddExpenseModal }:
 
             {/* 6 Heads Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-              {/* 1. Courier charges */}
-              <div className="rounded-xl border border-[#E5EAE7] bg-[#FAFCF9] p-4 flex flex-col justify-between min-h-[96px]">
-                <span className="text-xs font-normal text-[#6B7280]">Courier charges</span>
-                <span className="text-lg font-bold text-[#111827] tracking-tight my-1">
-                  ৳{formatNumber(courier.total_poisha / 100)}
-                </span>
-                <span className="text-[11px] text-[#6B7280] leading-tight">
-                  Delivery ৳{formatNumber((courier.delivery_poisha ?? 0) / 100)} · COD ৳{formatNumber((courier.cod_poisha ?? 0) / 100)} · returns ৳{formatNumber((courier.returns_poisha ?? 0) / 100)}
-                </span>
-              </div>
-
-              {/* 2. Advertising */}
-              <div className="rounded-xl border border-[#E5EAE7] bg-[#FAFCF9] p-4 flex flex-col justify-between min-h-[96px]">
-                <span className="text-xs font-normal text-[#6B7280]">Advertising</span>
-                <span className="text-lg font-bold text-[#111827] tracking-tight my-1">
-                  ৳{formatNumber(advertising.total_poisha / 100)}
-                </span>
-                <span className="text-[11px] text-[#6B7280] leading-tight">
-                  {advertising.orig_amount && advertising.fx_rate ? (
-                    `$${advertising.orig_amount.toFixed(2)} @ ${advertising.fx_rate}${advertising.fx_rate_date ? ` · rate of ${formatShortDate(advertising.fx_rate_date)}` : ''}`
-                  ) : advertising.total_poisha > 0 ? (
-                    'Meta ad spend campaigns'
-                  ) : (
-                    'No ad spend this month'
-                  )}
+              {/* 1. Fixed Cost (Prorated Daily - PDF Requirement 9) */}
+              <div className="rounded-xl border border-[#CAE4D8] bg-[#E6F7EF] p-4 flex flex-col justify-between min-h-[110px] relative group">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[#025033]">Fixed operating cost</span>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#025033] text-white">
+                    Prorated
+                  </span>
+                </div>
+                <div className="my-1">
+                  <div className="text-lg font-black text-[#025033] tracking-tight">
+                    ৳{formatNumber(period === 'this_month' ? fixedCostMonthly : period === 'quarter' ? fixedCostMonthly * 3 : fixedCostMonthly * 12)}
+                  </div>
+                  <div className="text-[11px] font-bold text-[#3A8067]">
+                    ৳{formatNumber(fixedCostMonthly / 30)} / day (৳{formatNumber(fixedCostMonthly)} / mo)
+                  </div>
+                </div>
+                <span className="text-[10px] text-[#3A8067] leading-tight border-t border-[#CAE4D8] pt-1.5">
+                  Divided over 30 days &amp; prorated to selected period
                 </span>
               </div>
 
-              {/* 3. Packaging */}
-              <div className="rounded-xl border border-[#E5EAE7] bg-[#FAFCF9] p-4 flex flex-col justify-between min-h-[96px]">
-                <span className="text-xs font-normal text-[#6B7280]">Packaging</span>
-                <span className="text-lg font-bold text-[#111827] tracking-tight my-1">
-                  ৳{formatNumber(packaging.total_poisha / 100)}
-                </span>
-                <span className="text-[11px] text-[#6B7280] leading-tight">
-                  {packaging.entry_count && packaging.entry_count > 0 ? (
-                    packaging.whatsapp_count && packaging.whatsapp_count === packaging.entry_count ? (
-                      `${packaging.entry_count} entries, ${packaging.entry_count === 2 ? 'both' : 'all'} confirmed on WhatsApp`
-                    ) : packaging.whatsapp_count ? (
-                      `${packaging.entry_count} entries, ${packaging.whatsapp_count} confirmed on WhatsApp`
-                    ) : (
-                      `${packaging.entry_count} entries recorded`
-                    )
-                  ) : (
-                    'Poly bags and boxes'
-                  )}
+              {/* 2. Courier charges (Summarized from deductions & returns - PDF Requirement 9) */}
+              <div className="rounded-xl border border-[#E5EAE7] bg-[#FAFCF9] p-4 flex flex-col justify-between min-h-[110px]">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[#111827]">Courier charges</span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-700">Auto-deducted</span>
+                </div>
+                <div className="my-1">
+                  <div className="text-lg font-black text-[#111827] tracking-tight">
+                    ৳{formatNumber(courier.total_poisha / 100)}
+                  </div>
+                  <div className="text-[11px] font-medium text-[#4B5563]">
+                    Delivery: ৳{formatNumber((courier.delivery_poisha ?? 0) / 100)} · Return fees: ৳{formatNumber((courier.returns_poisha ?? 0) / 100)}
+                  </div>
+                </div>
+                <span className="text-[10px] text-[#6B7280] leading-tight border-t border-[#E5EAE7] pt-1.5">
+                  COD fees: ৳{formatNumber((courier.cod_poisha ?? 0) / 100)} · Reconciled across Pathao &amp; Steadfast
                 </span>
               </div>
 
-              {/* 4. Rent */}
-              <div className="rounded-xl border border-[#E5EAE7] bg-[#FAFCF9] p-4 flex flex-col justify-between min-h-[96px]">
-                <span className="text-xs font-normal text-[#6B7280]">Rent</span>
-                <span className="text-lg font-bold text-[#111827] tracking-tight my-1">
-                  ৳{formatNumber(rent.total_poisha / 100)}
-                </span>
-                <span className="text-[11px] text-[#6B7280] leading-tight">
-                  {rent.subtext || (rent.total_poisha > 0 ? 'Posted 1 Nov, recurring' : 'Recurring overhead')}
+              {/* 3. Advertising (Configurable USD to BDT - PDF Requirement 9) */}
+              <div className="rounded-xl border border-[#E5EAE7] bg-[#FAFCF9] p-4 flex flex-col justify-between min-h-[110px]">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[#111827]">Advertising</span>
+                  <div className="flex items-center gap-1 text-[10px] font-bold text-[#025033]">
+                    <span>$1 = ৳</span>
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={customFxRate}
+                      onChange={(e) => setCustomFxRate(parseFloat(e.target.value) || 122.5)}
+                      className="w-12 bg-white border border-[#CAE4D8] rounded px-1 text-center font-bold"
+                    />
+                  </div>
+                </div>
+                <div className="my-1">
+                  <div className="text-lg font-black text-[#111827] tracking-tight">
+                    ৳{formatNumber(advertising.total_poisha > 0 ? (advertising.total_poisha / 100) : (advertising.orig_amount ? advertising.orig_amount * customFxRate : 0))}
+                  </div>
+                  <div className="text-[11px] font-bold text-[#025033]">
+                    ${((advertising.total_poisha / 100) / customFxRate).toFixed(2)} USD
+                  </div>
+                </div>
+                <span className="text-[10px] text-[#6B7280] leading-tight border-t border-[#E5EAE7] pt-1.5">
+                  Auto-pulled from ad account converted at ৳{customFxRate}/$
                 </span>
               </div>
 
-              {/* 5. Salary */}
-              <div className="rounded-xl border border-[#E5EAE7] bg-[#FAFCF9] p-4 flex flex-col justify-between min-h-[96px]">
-                <span className="text-xs font-normal text-[#6B7280]">Salary</span>
-                <span className="text-lg font-bold text-[#111827] tracking-tight my-1">
-                  ৳{formatNumber(salary.total_poisha / 100)}
-                </span>
-                <span className="text-[11px] text-[#6B7280] leading-tight">
-                  {salary.subtext || (salary.total_poisha > 0 ? 'Posted 1 Nov, recurring' : 'Recurring overhead')}
+              {/* 4. Packaging (Clearly shown - PDF Requirement 9) */}
+              <div className="rounded-xl border border-[#E5EAE7] bg-[#FAFCF9] p-4 flex flex-col justify-between min-h-[110px]">
+                <span className="text-xs font-bold text-[#111827]">Packaging spend</span>
+                <div className="my-1">
+                  <div className="text-lg font-black text-[#111827] tracking-tight">
+                    ৳{formatNumber(packaging.total_poisha / 100)}
+                  </div>
+                  <div className="text-[11px] text-[#6B7280]">
+                    Poly bags, custom boxes &amp; tape
+                  </div>
+                </div>
+                <span className="text-[10px] text-[#6B7280] leading-tight border-t border-[#E5EAE7] pt-1.5">
+                  {packaging.entry_count ? `${packaging.entry_count} batches recorded` : 'Direct fulfillment packaging'}
                 </span>
               </div>
 
-              {/* 6. Internet */}
-              <div className="rounded-xl border border-[#E5EAE7] bg-[#FAFCF9] p-4 flex flex-col justify-between min-h-[96px]">
-                <span className="text-xs font-normal text-[#6B7280]">Internet</span>
-                <span className="text-lg font-bold text-[#111827] tracking-tight my-1">
-                  ৳{formatNumber(internet.total_poisha / 100)}
+              {/* 5. Rent & Utilities */}
+              <div className="rounded-xl border border-[#E5EAE7] bg-[#FAFCF9] p-4 flex flex-col justify-between min-h-[110px]">
+                <span className="text-xs font-bold text-[#111827]">Rent</span>
+                <div className="my-1">
+                  <div className="text-lg font-black text-[#111827] tracking-tight">
+                    ৳{formatNumber(rent.total_poisha / 100)}
+                  </div>
+                  <div className="text-[11px] text-[#6B7280]">
+                    {rent.subtext || (rent.total_poisha > 0 ? 'Posted 1 Nov, recurring' : 'Recurring overhead')}
+                  </div>
+                </div>
+                <span className="text-[10px] text-[#6B7280] leading-tight border-t border-[#E5EAE7] pt-1.5">
+                  Studio &amp; warehouse lease
                 </span>
-                <span className="text-[11px] text-[#6B7280] leading-tight">
-                  {internet.subtext || (internet.total_poisha > 0 ? 'Posted 3 Nov, recurring' : 'Recurring overhead')}
+              </div>
+
+              {/* 6. Salary & Team */}
+              <div className="rounded-xl border border-[#E5EAE7] bg-[#FAFCF9] p-4 flex flex-col justify-between min-h-[110px]">
+                <span className="text-xs font-bold text-[#111827]">Salary &amp; Staff</span>
+                <div className="my-1">
+                  <div className="text-lg font-black text-[#111827] tracking-tight">
+                    ৳{formatNumber(salary.total_poisha / 100)}
+                  </div>
+                  <div className="text-[11px] text-[#6B7280]">
+                    {salary.subtext || (salary.total_poisha > 0 ? 'Posted 1 Nov, recurring' : 'Monthly payroll')}
+                  </div>
+                </div>
+                <span className="text-[10px] text-[#6B7280] leading-tight border-t border-[#E5EAE7] pt-1.5">
+                  Operating workforce &amp; packaging team
                 </span>
               </div>
             </div>
@@ -605,6 +643,7 @@ export function ExpensesView({ currentUser, onNavigate, onOpenAddExpenseModal }:
                   className="w-full text-xs px-3 py-2 border border-[#E5EAE7] rounded-xl bg-white text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#025033]"
                 >
                   <option value="packaging">Packaging</option>
+                  <option value="fixed_cost">Fixed cost (prorated overhead)</option>
                   <option value="courier">Courier charges</option>
                   <option value="advertising">Advertising</option>
                   <option value="salary">Salary</option>

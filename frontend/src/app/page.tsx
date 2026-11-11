@@ -10,7 +10,8 @@ import { DeliveriesList } from '@/components/DeliveriesList';
 import { WhatsAppActivityCard } from '@/components/WhatsAppActivityCard';
 import { ActionItemsCard } from '@/components/ActionItemsCard';
 import { PnLTable } from '@/components/PnLTable';
-import { MoneyTrackerCard } from '@/components/MoneyTrackerCard';
+import { DashboardProductPerformance } from '@/components/DashboardProductPerformance';
+import { AdsView } from '@/components/AdsView';
 import { MiscExpenseCard } from '@/components/MiscExpenseCard';
 import { OrdersView } from '@/components/OrdersView';
 import { ProductsView } from '@/components/ProductsView';
@@ -42,7 +43,8 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [merchant, setMerchant] = useState<{ id: number; name: string; status?: 'active' | 'paused'; paused_reason?: string | null } | null>(null);
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
-  const [timeRange, setTimeRange] = useState<'month' | 'last30' | 'quarter' | 'year'>('month');
+  const [timeRange, setTimeRange] = useState<'month' | 'last30' | 'last7' | 'custom'>('month');
+  const [customDates, setCustomDates] = useState<{ from: string; to: string } | null>(null);
   const [liveStatus, setLiveStatus] = useState<'connected' | 'connecting' | 'offline'>('connecting');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -67,15 +69,16 @@ export default function Home() {
     setTimeout(() => setToastMessage(null), 5000);
   };
 
-  const rangeFor = (range: 'month' | 'last30' | 'quarter' | 'year'): { from: string; to: string } => {
+  const rangeFor = (range: 'month' | 'last30' | 'last7' | 'custom'): { from: string; to: string } => {
     const now = new Date();
     const fmt = (d: Date) =>
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     let from: Date;
     if (range === 'month') from = new Date(now.getFullYear(), now.getMonth(), 1);
     else if (range === 'last30') from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    else if (range === 'quarter') from = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
-    else from = new Date(now.getFullYear(), 0, 1);
+    else if (range === 'last7') from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    else if (range === 'custom' && customDates) return customDates;
+    else from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     return { from: fmt(from), to: fmt(now) };
   };
 
@@ -120,7 +123,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [router, timeRange]);
+  }, [router, timeRange, customDates]);
 
   // Check auth session
   useEffect(() => {
@@ -356,7 +359,14 @@ export default function Home() {
           <Header
             user={user}
             timeRange={timeRange}
-            onTimeRangeChange={setTimeRange}
+            onTimeRangeChange={(range, custom) => {
+              setTimeRange(range);
+              if (custom) {
+                setCustomDates(custom);
+              }
+            }}
+            customFrom={customDates?.from}
+            customTo={customDates?.to}
             exceptionsCount={exceptionsCount}
             onReviewExceptions={() => setCurrentTab('orders')}
             onOpenExpenseModal={() => setExpenseModalOpen(true)}
@@ -485,10 +495,10 @@ export default function Home() {
                   />
                 )}
 
-                {/* Where the money is: full cash position from the ledger */}
-                <MoneyTrackerCard
-                  cash={dashboard.cash}
-                  onOpenMoneyTab={() => setCurrentTab('money')}
+                {/* Product Performance (Highest Net Profit First - PDF Requirement 3) */}
+                <DashboardProductPerformance
+                  products={dashboard.product_performance || []}
+                  onViewAll={() => setCurrentTab('reports')}
                 />
 
                 {/* Mid Section: Deliveries, Misc Expense Recorder, WhatsApp, Action Items */}
@@ -517,6 +527,9 @@ export default function Home() {
                 {dashboard.pnl && <PnLTable pnl={dashboard.pnl} />}
               </div>
             )}
+
+            {/* View: Ads (Screen 12 - PDF Requirement 11) */}
+            {currentTab === 'ads' && <AdsView />}
 
             {/* View: Orders (Screen 10) */}
             {currentTab === 'orders' && (

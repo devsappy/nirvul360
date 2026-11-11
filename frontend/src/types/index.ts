@@ -163,6 +163,42 @@ export interface PlatformUsersResponse {
   users: PlatformUser[];
 }
 
+export interface CourierDrilldownPeriod {
+  regular_return_pct: number;
+  paid_return_pct: number;
+  total_returns: number;
+}
+
+export interface CourierReturnItem {
+  courier: string;
+  name: string;
+  return_pct: number;
+  delivered_orders: number;
+  returned_orders: number;
+  total_orders: number;
+  months_6: CourierDrilldownPeriod;
+  year_1: CourierDrilldownPeriod;
+}
+
+export interface ProductPerformanceSummaryItem {
+  product_id: number;
+  name: string;
+  sku: string;
+  orders_placed: number;
+  delivered: number;
+  returned: number;
+  delivered_pct: number;
+  returned_pct: number;
+  revenue_poisha: number;
+  cogs_poisha: number | null;
+  gross_profit_poisha: number | null;
+  ad_spend_poisha: number | null;
+  courier_cost_poisha: number | null;
+  net_profit_poisha: number | null;
+  net_margin: number | null;
+  image_url?: string;
+}
+
 export interface DashboardData {
   range: { from: string; to: string; label: string };
   pnl?: PnLReport | null;
@@ -173,6 +209,7 @@ export interface DashboardData {
     net_profit?: number | null;
     orders_placed: number;
     delivery_rate: number;
+    return_rate?: number;
     held_at_couriers: number;
     net_margin_pct?: number | null;
     orders_in_transit: number;
@@ -183,7 +220,13 @@ export interface DashboardData {
     settled_orders?: number;
     reconciled_orders?: number;
     misc_expenses?: number;
+    ad_spend_usd?: number;
+    ad_spend_bdt?: number;
+    fx_rate?: number;
+    courier_returns?: CourierReturnItem[];
   };
+  courier_returns?: CourierReturnItem[];
+  product_performance?: ProductPerformanceSummaryItem[];
   pipeline: PipelineStage[];
   today_deliveries: Order[];
   alerts: ActionAlerts;

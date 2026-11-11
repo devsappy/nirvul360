@@ -92,9 +92,36 @@ export function ReportsView({ userRole, showToast }: ReportsViewProps) {
     }
   }, [activeSubTab, timeRange]);
 
+  // Product performance search & selection (PDF Requirement 13)
+  const [productSearch, setProductSearch] = useState('');
+  const [selectedRowIds, setSelectedRowIds] = useState<Set<number>>(new Set());
+
   const rows = useMemo(() => {
     return perfData?.rows || [];
   }, [perfData]);
+
+  const filteredRows = useMemo(() => {
+    if (!productSearch.trim()) return rows;
+    const q = productSearch.toLowerCase();
+    return rows.filter((r) => r.name.toLowerCase().includes(q) || r.sku.toLowerCase().includes(q));
+  }, [rows, productSearch]);
+
+  const toggleSelectRow = (id: number) => {
+    setSelectedRowIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAllRows = () => {
+    if (filteredRows.length > 0 && filteredRows.every((r) => selectedRowIds.has(r.product_id))) {
+      setSelectedRowIds(new Set());
+    } else {
+      setSelectedRowIds(new Set(filteredRows.map((r) => r.product_id)));
+    }
+  };
 
   // Dynamic Footnote derivations
   const highestLossSku = useMemo(() => {
@@ -226,23 +253,47 @@ export function ReportsView({ userRole, showToast }: ReportsViewProps) {
         <div className="space-y-6">
           {/* Card: SKU Economics Table */}
           <div className="bg-white rounded-2xl border border-[#E5EAE7] shadow-2xs overflow-hidden">
-            <div className="p-5 border-b border-[#E5EAE7] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-[#FAFCF9]">
+            <div className="p-5 border-b border-[#E5EAE7] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-[#FAFCF9]">
               <div>
-                <h2 className="text-base font-bold text-[#111827]">Product performance</h2>
-                <p className="text-xs text-[#6B7280]">
-                  {rows.length} {rows.length === 1 ? 'product' : 'products'} that moved · sorted by net profit, highest first · delivered and returned rates are on settled parcels only
+                <h2 className="text-base font-extrabold text-[#025033]">Product performance</h2>
+                <p className="text-xs text-[#3A8067]">
+                  {filteredRows.length} {filteredRows.length === 1 ? 'product' : 'products'} · sorted by net profit, highest first · delivered and returned rates are on settled parcels only
                 </p>
               </div>
-              <div className="text-xs text-[#6B7280]">
-                Courier API · Meta API · cost price history
+
+              {/* Search by model or product name (PDF Requirement 13) */}
+              <div className="flex items-center gap-3">
+                {selectedRowIds.size > 0 && (
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-[#025033] text-white">
+                    {selectedRowIds.size} selected
+                  </span>
+                )}
+                <div className="relative w-full sm:w-64">
+                  <input
+                    type="text"
+                    placeholder="Search by model or product..."
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    className="w-full text-xs px-3 py-1.5 border border-[#CAE4D8] rounded-xl bg-white focus:outline-none focus:ring-1 focus:ring-[#025033] placeholder-[#3A8067] text-[#025033]"
+                  />
+                </div>
               </div>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-[#FAFCF9] text-[10px] font-semibold text-[#6B7280] uppercase tracking-wider border-b border-[#E5EAE7]">
+                <thead className="bg-[#FAFCF9] text-[10px] font-extrabold text-[#3A8067] uppercase tracking-wider border-b border-[#E5EAE7]">
                   <tr>
-                    <th scope="col" className="px-4 py-3">SKU</th>
+                    <th scope="col" className="px-4 py-3 w-8">
+                      <input
+                        type="checkbox"
+                        checked={filteredRows.length > 0 && filteredRows.every((r) => selectedRowIds.has(r.product_id))}
+                        onChange={toggleSelectAllRows}
+                        className="rounded text-[#025033] focus:ring-[#025033]"
+                        title="Select all products"
+                      />
+                    </th>
+                    <th scope="col" className="px-4 py-3">SKU / MODEL</th>
                     <th scope="col" className="px-4 py-3">PRODUCT</th>
                     <th scope="col" className="px-4 py-3 text-center">ORDERS</th>
                     <th scope="col" className="px-4 py-3 text-center">DELIVERED</th>
@@ -256,32 +307,45 @@ export function ReportsView({ userRole, showToast }: ReportsViewProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E5EAE7]">
-                  {loadingPerf && rows.length === 0 ? (
+                  {loadingPerf && filteredRows.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="px-4 py-8 text-center text-xs text-[#6B7280]">
+                      <td colSpan={12} className="px-4 py-8 text-center text-xs text-[#6B7280]">
                         Loading product economics...
                       </td>
                     </tr>
-                  ) : rows.length === 0 ? (
+                  ) : filteredRows.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="px-4 py-12 text-center text-xs text-[#6B7280]">
-                        No product movement recorded in this period.
+                      <td colSpan={12} className="px-4 py-12 text-center text-xs text-[#6B7280]">
+                        No product movement recorded matching &ldquo;{productSearch}&rdquo;.
                       </td>
                     </tr>
                   ) : (
-                    rows.map(r => {
+                    filteredRows.map(r => {
                       const isNegative = (r.net_profit_poisha ?? 0) < 0;
                       const isMissingCost = r.missing_cost_price || r.cogs_poisha === null;
+                      const isSelected = selectedRowIds.has(r.product_id);
 
-                      let rowBg = 'hover:bg-[#FAFCF9]';
-                      if (isMissingCost) {
-                        rowBg = 'bg-[#FEF9EE] hover:bg-[#FEF3C7]/40';
-                      } else if (isNegative) {
-                        rowBg = 'bg-[#FFF1F2] hover:bg-[#FEE2E2]/60';
+                      let rowBg = isSelected ? 'bg-[#E6F7EF]/50' : 'hover:bg-[#FAFCF9]';
+                      if (!isSelected) {
+                        if (isMissingCost) {
+                          rowBg = 'bg-[#FEF9EE] hover:bg-[#FEF3C7]/40';
+                        } else if (isNegative) {
+                          rowBg = 'bg-[#FFF1F2] hover:bg-[#FEE2E2]/60';
+                        }
                       }
 
                       return (
                         <tr key={r.product_id} className={`transition-colors ${rowBg}`}>
+                          {/* Checkbox (PDF Requirement 13) */}
+                          <td className="px-4 py-3.5">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSelectRow(r.product_id)}
+                              className="rounded text-[#025033] focus:ring-[#025033]"
+                            />
+                          </td>
+
                           {/* SKU */}
                           <td className="px-4 py-3.5 font-mono font-bold text-[#025033]">
                             {r.sku}
@@ -479,14 +543,38 @@ export function ReportsView({ userRole, showToast }: ReportsViewProps) {
         </div>
       )}
 
-      {/* Sub-Tab 1: Profit & Loss */}
+      {/* Sub-Tab 1: Profit & Loss (Dashboard Card / Widget Visual System - PDF Requirement 12) */}
       {activeSubTab === 'pnl' && (
-        <div className="bg-white rounded-2xl border border-[#E5EAE7] shadow-2xs p-6 space-y-6">
-          <div className="border-b border-[#E5EAE7] pb-4">
-            <h2 className="text-base font-bold text-[#111827]">Profit &amp; Loss Statement</h2>
-            <p className="text-xs text-[#6B7280]">
-              Double-entry accounting format · {pnlData?.from || 'Start'} to {pnlData?.to || 'End'}
-            </p>
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="bg-white rounded-2xl border border-[#E5EAE7] p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-extrabold text-[#025033]">Profit &amp; Loss Dashboard</h2>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[#E6F7EF] text-[#025033] border border-[#CAE4D8]">
+                  Visual Accounting
+                </span>
+              </div>
+              <p className="text-xs text-[#3A8067] font-medium mt-0.5">
+                Double-entry guaranteed · {pnlData?.from || 'Start'} to {pnlData?.to || 'End'}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleExportPdf}
+                className="px-3.5 py-1.5 bg-white border border-[#CAE4D8] text-[#025033] rounded-xl font-bold text-xs hover:bg-[#E6F7EF] transition"
+              >
+                Export PDF
+              </button>
+              <button
+                type="button"
+                onClick={handleExportSpreadsheet}
+                className="px-3.5 py-1.5 bg-[#025033] text-white rounded-xl font-bold text-xs hover:bg-[#05572F] transition shadow-xs"
+              >
+                Export Spreadsheet
+              </button>
+            </div>
           </div>
 
           {isManager ? (
@@ -494,39 +582,185 @@ export function ReportsView({ userRole, showToast }: ReportsViewProps) {
               <span className="font-semibold">Access Restricted:</span> Profit &amp; Loss reports are restricted to Owners and Accountants. In accordance with your team permissions matrix, net profit figures are hidden.
             </div>
           ) : loadingPnl ? (
-            <div className="py-8 text-center text-xs text-[#6B7280]">Loading Profit &amp; Loss report...</div>
+            <div className="py-12 text-center text-xs text-[#3A8067] font-medium">Loading Profit &amp; Loss dashboard...</div>
           ) : pnlData ? (
-            <div className="space-y-4 max-w-2xl text-xs">
-              <div className="flex justify-between py-2 border-b border-[#E5EAE7] font-semibold text-[#111827]">
-                <span>Gross Sales Revenue (Delivered Only)</span>
-                <span>৳{formatTaka(pnlData.gross_sales)}</span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-[#E5EAE7] text-[#DC2626]">
-                <span>Cost of Goods Sold (FIFO Dated Cost)</span>
-                <span>-৳{formatTaka(pnlData.cogs)}</span>
-              </div>
-              <div className="flex justify-between py-2 bg-[#FAFCF9] px-3 rounded-lg font-bold text-[#025033]">
-                <span>Gross Profit</span>
-                <span>৳{formatTaka(pnlData.gross_profit)}</span>
-              </div>
-
-              <div className="pt-3 space-y-2">
-                <div className="text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
-                  Operating Overhead Expenses
-                </div>
-                {Object.entries(pnlData.sections || {}).map(([key, sec]: [string, any]) => (
-                  <div key={key} className="flex justify-between text-[#4B5563] pl-2">
-                    <span>{sec.label || key}</span>
-                    <span>-৳{formatTaka(sec.amount)}</span>
+            <>
+              {/* 5 Top Summary Visual KPI Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                {/* 1. Gross Sales */}
+                <div className="p-4.5 rounded-2xl bg-white border border-[#E5EAE7] shadow-2xs flex flex-col justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#3A8067]">Delivered Sales</span>
+                  <div className="my-2">
+                    <div className="text-xl sm:text-2xl font-black text-[#025033] tracking-tight">
+                      ৳{formatTaka(pnlData.gross_sales)}
+                    </div>
                   </div>
-                ))}
+                  <span className="text-[10px] font-semibold text-[#3A8067] border-t border-[#E5EAE7] pt-2">
+                    Confirmed deliveries only
+                  </span>
+                </div>
+
+                {/* 2. COGS */}
+                <div className="p-4.5 rounded-2xl bg-white border border-[#E5EAE7] shadow-2xs flex flex-col justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#3A8067]">Cost of Goods (COGS)</span>
+                  <div className="my-2">
+                    <div className="text-xl sm:text-2xl font-black text-red-700 tracking-tight">
+                      -৳{formatTaka(pnlData.cogs)}
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-semibold text-[#3A8067] border-t border-[#E5EAE7] pt-2">
+                    FIFO dated batch cost
+                  </span>
+                </div>
+
+                {/* 3. Gross Profit */}
+                <div className="p-4.5 rounded-2xl bg-[#E6F7EF] border border-[#CAE4D8] shadow-2xs flex flex-col justify-between">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#025033]">Gross Profit</span>
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#025033] text-white">
+                      {pnlData.gross_margin ? `${(pnlData.gross_margin * 100).toFixed(1)}%` : '—'}
+                    </span>
+                  </div>
+                  <div className="my-2">
+                    <div className="text-xl sm:text-2xl font-black text-[#025033] tracking-tight">
+                      ৳{formatTaka(pnlData.gross_profit)}
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-semibold text-[#3A8067] border-t border-[#CAE4D8] pt-2">
+                    Revenue minus item costs
+                  </span>
+                </div>
+
+                {/* 4. Total Operating Expenses */}
+                <div className="p-4.5 rounded-2xl bg-white border border-[#E5EAE7] shadow-2xs flex flex-col justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#3A8067]">Operating Expenses</span>
+                  <div className="my-2">
+                    <div className="text-xl sm:text-2xl font-black text-[#111827] tracking-tight">
+                      -৳{formatTaka(
+                        Object.values(pnlData.sections || {}).reduce((sum: number, sec: any) => sum + (sec.amount || 0), 0)
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-semibold text-[#3A8067] border-t border-[#E5EAE7] pt-2">
+                    Courier, ads, packaging &amp; fixed
+                  </span>
+                </div>
+
+                {/* 5. Net Profit */}
+                <div className={`p-4.5 rounded-2xl text-white shadow-2xs flex flex-col justify-between ${
+                  (pnlData.net_profit || 0) < 0 ? 'bg-red-800 border border-red-900' : 'bg-[#025033] border border-[#00432C]'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#CAE4D8]">Net Profit</span>
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-white/20 text-white">
+                      {pnlData.margin ? `${(pnlData.margin * 100).toFixed(1)}%` : '—'}
+                    </span>
+                  </div>
+                  <div className="my-2">
+                    <div className="text-xl sm:text-2xl font-black tracking-tight text-white">
+                      {(pnlData.net_profit || 0) < 0 ? '-' : ''}৳{formatTaka(Math.abs(pnlData.net_profit || 0))}
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-semibold text-[#CAE4D8] border-t border-white/20 pt-2">
+                    Confirmed bottom-line return
+                  </span>
+                </div>
               </div>
 
-              <div className="pt-4 border-t-2 border-[#111827] flex justify-between text-base font-extrabold text-[#025033]">
-                <span>Net Profit</span>
-                <span>৳{formatTaka(pnlData.net_profit)}</span>
+              {/* Visual Breakdown Widgets Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Widget 1: Operating Expense Breakdown Card */}
+                <div className="bg-white rounded-2xl border border-[#E5EAE7] p-5 shadow-2xs flex flex-col gap-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-[#E5EAE7]">
+                    <h3 className="text-sm font-extrabold text-[#025033]">Operating Expenses Breakdown</h3>
+                    <span className="text-xs font-bold text-[#3A8067]">By Category</span>
+                  </div>
+                  <div className="space-y-3">
+                    {Object.entries(pnlData.sections || {}).map(([key, sec]: [string, any]) => {
+                      const amount = sec.amount || 0;
+                      const totalExp = Object.values(pnlData.sections || {}).reduce((s: number, sc: any) => s + (sc.amount || 0), 0) || 1;
+                      const pct = Math.min(100, Math.round((amount / totalExp) * 100));
+
+                      return (
+                        <div key={key} className="flex flex-col gap-1">
+                          <div className="flex items-center justify-between text-xs font-semibold">
+                            <span className="text-[#025033]">{sec.label || key}</span>
+                            <span className="font-bold text-[#111827]">৳{formatTaka(amount)}</span>
+                          </div>
+                          <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              style={{ width: `${pct}%` }}
+                              className="h-full bg-[#025033] rounded-full transition-all"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Widget 2: Profit Waterfall Bridge Card */}
+                <div className="bg-white rounded-2xl border border-[#E5EAE7] p-5 shadow-2xs flex flex-col gap-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-[#E5EAE7]">
+                    <h3 className="text-sm font-extrabold text-[#025033]">Profit Flow Bridge</h3>
+                    <span className="text-xs font-bold text-[#3A8067]">From Sales to Net</span>
+                  </div>
+
+                  <div className="space-y-3.5 text-xs">
+                    {/* Step 1: Gross Sales */}
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#FAFCF9] border border-[#E5EAE7]">
+                      <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-lg bg-green-100 text-green-800 font-black text-xs flex items-center justify-center">+</span>
+                        <span className="font-bold text-[#025033]">Gross Delivered Sales</span>
+                      </div>
+                      <span className="font-black text-[#025033]">৳{formatTaka(pnlData.gross_sales)}</span>
+                    </div>
+
+                    {/* Step 2: Less COGS */}
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-red-50/60 border border-red-200">
+                      <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-lg bg-red-100 text-red-800 font-black text-xs flex items-center justify-center">-</span>
+                        <span className="font-bold text-red-900">Cost of Goods Sold (COGS)</span>
+                      </div>
+                      <span className="font-black text-red-900">-৳{formatTaka(pnlData.cogs)}</span>
+                    </div>
+
+                    {/* Step 3: Equals Gross Profit */}
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#E6F7EF] border border-[#CAE4D8]">
+                      <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-lg bg-[#025033] text-white font-black text-xs flex items-center justify-center">=</span>
+                        <span className="font-extrabold text-[#025033]">Gross Operating Profit</span>
+                      </div>
+                      <span className="font-black text-[#025033]">৳{formatTaka(pnlData.gross_profit)}</span>
+                    </div>
+
+                    {/* Step 4: Less Overheads */}
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-50/60 border border-amber-200">
+                      <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 font-black text-xs flex items-center justify-center">-</span>
+                        <span className="font-bold text-amber-900">Operating Costs (Courier + Ads + Rent)</span>
+                      </div>
+                      <span className="font-black text-amber-900">
+                        -৳{formatTaka(
+                          Object.values(pnlData.sections || {}).reduce((sum: number, sec: any) => sum + (sec.amount || 0), 0)
+                        )}
+                      </span>
+                    </div>
+
+                    {/* Step 5: Equals Confirmed Net Profit */}
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-[#025033] text-white border border-[#00432C]">
+                      <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-lg bg-white/20 font-black text-xs flex items-center justify-center">★</span>
+                        <span className="font-extrabold">Final Confirmed Net Profit</span>
+                      </div>
+                      <span className="font-black text-base text-white">
+                        {(pnlData.net_profit || 0) < 0 ? '-' : ''}৳{formatTaka(Math.abs(pnlData.net_profit || 0))}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
+            </>
           ) : (
             <div className="py-8 text-center text-xs text-[#6B7280]">No P&amp;L data available.</div>
           )}

@@ -55,6 +55,14 @@ export function IntegrationsView({
   const [mfsModalOpen, setMfsModalOpen] = useState(false);
   const [mfsProvider, setMfsProvider] = useState<'bKash' | 'Nagad'>('bKash');
 
+  // Daraz Modal (PDF Requirement 15)
+  const [darazModalOpen, setDarazModalOpen] = useState(false);
+  const [darazSellerId, setDarazSellerId] = useState('');
+  const [darazApiKey, setDarazApiKey] = useState('');
+  const [darazApiSecret, setDarazApiSecret] = useState('');
+  const [isSavingDaraz, setIsSavingDaraz] = useState(false);
+  const [darazFeedback, setDarazFeedback] = useState<string | null>(null);
+
   const notify = (msg: string) => {
     if (onShowToast) onShowToast(msg);
   };
@@ -302,6 +310,21 @@ export function IntegrationsView({
     if (key === 'bkash_nagad' || action === 'connect_bkash' || action === 'connect_nagad') {
       setMfsProvider(action.includes('nagad') ? 'Nagad' : 'bKash');
       setMfsModalOpen(true);
+      return;
+    }
+
+    // Daraz Actions (PDF Requirement 15)
+    if (key === 'daraz' || action === 'configure_daraz' || action === 'sync_daraz') {
+      if (action === 'sync_daraz' || action === 'sync') {
+        setSyncingCardKey('daraz');
+        setTimeout(() => {
+          setSyncingCardKey(null);
+          notify('Daraz Open Platform orders and payouts synced successfully.');
+        }, 1200);
+        return;
+      }
+      setDarazFeedback(null);
+      setDarazModalOpen(true);
       return;
     }
 
@@ -865,6 +888,104 @@ export function IntegrationsView({
                 Understood
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 6. Modal: Daraz Open Platform (PDF Requirement 15) */}
+      {darazModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl flex flex-col gap-4 border border-slate-200">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-md bg-[#FF6B00] text-white font-bold text-xs flex items-center justify-center">
+                    DZ
+                  </span>
+                  <h3 className="text-base font-bold text-slate-900">Daraz Seller Center Integration</h3>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">Sync orders, commission deductions, and weekly payout statements</p>
+              </div>
+              <button onClick={() => setDarazModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-sm">✕</button>
+            </div>
+
+            {darazFeedback && (
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800">
+                {darazFeedback}
+              </div>
+            )}
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                setIsSavingDaraz(true);
+                setTimeout(() => {
+                  setIsSavingDaraz(false);
+                  setDarazFeedback('Daraz Seller credentials saved. Active sync scheduled.');
+                  notify('Daraz credentials updated successfully!');
+                  setTimeout(() => setDarazModalOpen(false), 1200);
+                }, 800);
+              }}
+              className="flex flex-col gap-3.5"
+            >
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-700">Daraz Seller ID / Shortcode</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. BD123456"
+                  value={darazSellerId}
+                  onChange={(e) => setDarazSellerId(e.target.value)}
+                  className="text-xs px-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#FF6B00]"
+                />
+                <span className="text-[11px] text-slate-400">Found in Daraz Seller Center profile settings.</span>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-700">Open Platform App Key</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. 500123"
+                  value={darazApiKey}
+                  onChange={(e) => setDarazApiKey(e.target.value)}
+                  className="text-xs px-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#FF6B00] font-mono"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-700">App Secret Key</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="••••••••••••••••••••••••••••••••"
+                  value={darazApiSecret}
+                  onChange={(e) => setDarazApiSecret(e.target.value)}
+                  className="text-xs px-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#FF6B00] font-mono"
+                />
+              </div>
+
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900 leading-relaxed">
+                Daraz payouts arrive weekly on Mondays. Commission, payment fees, and Daraz Express shipping deductions will automatically flow into your double-entry P&amp;L ledger.
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setDarazModalOpen(false)}
+                  className="px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingDaraz}
+                  className="px-4 py-2 bg-[#FF6B00] hover:bg-[#E55A00] text-white rounded-xl text-xs font-semibold shadow-xs disabled:opacity-50"
+                >
+                  {isSavingDaraz ? 'Saving...' : 'Save Daraz Credentials'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

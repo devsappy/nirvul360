@@ -56,6 +56,7 @@ export function Sidebar({
   // Accounting Navigation Links (Pure typography, zero icons)
   const navItemsAccounting = [
     { id: 'dashboard', label: 'Dashboard' },
+    { id: 'ads', label: 'Ads' },
     { id: 'attention', label: 'Needs attention', badge: attentionCount > 0 ? attentionCount : null },
     { id: 'orders', label: 'Orders' },
     { id: 'settlements', label: 'Courier settlements' },

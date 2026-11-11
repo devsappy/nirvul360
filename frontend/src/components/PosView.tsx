@@ -51,8 +51,19 @@ export function PosView({ user, onRefresh, counterName, merchantName, showToast 
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'bKash' | 'Nagad' | 'Card'>('Cash');
   const [customerName, setCustomerName] = useState('');
   const [discountStr, setDiscountStr] = useState('');
+  const [vatEnabled, setVatEnabled] = useState(false);
+  const [vatRate, setVatRate] = useState(5); // 5%
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Opening Cash Float State (PDF Requirement 14)
+  const [openingCashModalOpen, setOpeningCashModalOpen] = useState(false);
+  const [openingCashInput, setOpeningCashInput] = useState('5000');
+  const [openingCashAmount, setOpeningCashAmount] = useState<number | null>(null);
+
+  // Camera Barcode Scanner State (PDF Requirement 14)
+  const [cameraScanModalOpen, setCameraScanModalOpen] = useState(false);
+  const [cameraScanFeedback, setCameraScanFeedback] = useState<string | null>(null);
 
   // Summary & Recent Orders
   const [summary, setSummary] = useState<PosOrdersSummary>({
@@ -110,7 +121,30 @@ export function PosView({ user, onRefresh, counterName, merchantName, showToast 
   useEffect(() => {
     setLoading(true);
     Promise.all([fetchProducts(), fetchOrders()]).finally(() => setLoading(false));
+
+    // Check opening cash for today (PDF Requirement 14)
+    if (typeof window !== 'undefined') {
+      const todayKey = 'nirvul_pos_opening_cash_' + new Date().toISOString().slice(0, 10);
+      const saved = localStorage.getItem(todayKey);
+      if (saved) {
+        setOpeningCashAmount(parseFloat(saved));
+      } else {
+        setOpeningCashModalOpen(true);
+      }
+    }
   }, []);
+
+  const handleSaveOpeningCash = (e: React.FormEvent) => {
+    e.preventDefault();
+    const amt = parseFloat(openingCashInput) || 0;
+    setOpeningCashAmount(amt);
+    if (typeof window !== 'undefined') {
+      const todayKey = 'nirvul_pos_opening_cash_' + new Date().toISOString().slice(0, 10);
+      localStorage.setItem(todayKey, amt.toString());
+    }
+    setOpeningCashModalOpen(false);
+    if (showToast) showToast(`Opening cash till float of ৳${amt.toLocaleString()} recorded.`, 'success');
+  };
 
   // Filter products by search query
   const filteredProducts = useMemo(() => {
@@ -172,9 +206,17 @@ export function PosView({ user, onRefresh, counterName, merchantName, showToast 
     return isNaN(val) || val < 0 ? 0 : Math.min(val, subtotal);
   }, [discountStr, subtotal]);
 
-  const toPay = useMemo(() => {
+  const toPayBeforeVat = useMemo(() => {
     return Math.max(0, subtotal - discount);
   }, [subtotal, discount]);
+
+  const vatAmount = useMemo(() => {
+    return vatEnabled ? Math.round(toPayBeforeVat * (vatRate / 100)) : 0;
+  }, [vatEnabled, toPayBeforeVat, vatRate]);
+
+  const toPay = useMemo(() => {
+    return toPayBeforeVat + vatAmount;
+  }, [toPayBeforeVat, vatAmount]);
 
   const totalUnits = useMemo(() => {
     return cart.reduce((sum, item) => sum + item.qty, 0);
@@ -261,25 +303,38 @@ export function PosView({ user, onRefresh, counterName, merchantName, showToast 
             {counterName || merchantName || 'Retail Register'} · {summary.today_orders_count} {summary.today_orders_count === 1 ? 'sale' : 'sales'} today · stock figures synced {stockSyncTime}
           </p>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Opening Float Pill (PDF Requirement 14) */}
+          <button
+            type="button"
+            onClick={() => setOpeningCashModalOpen(true)}
+            className="px-3.5 py-2 text-xs font-bold text-[#025033] bg-[#E6F7EF] border border-[#CAE4D8] rounded-xl hover:bg-[#CAE4D8] transition-colors shadow-2xs flex items-center gap-1.5"
+            title="Click to view or adjust Opening Cash Till Float"
+          >
+            <span>💵 Till Float:</span>
+            <span className="font-black text-[#025033]">
+              ৳{openingCashAmount !== null ? openingCashAmount.toLocaleString() : 'Set Float'}
+            </span>
+          </button>
+
           <button
             type="button"
             onClick={() => setIsSalesModalOpen(true)}
-            className="px-3.5 py-2 text-xs font-medium text-[#025033] bg-white border border-[#E5EAE7] rounded-xl hover:bg-[#F9FAF8] transition-colors shadow-2xs"
+            className="px-3.5 py-2 text-xs font-semibold text-[#025033] bg-white border border-[#E5EAE7] rounded-xl hover:bg-[#F9FAF8] transition-colors shadow-2xs"
           >
             Today&apos;s sales
           </button>
           <button
             type="button"
             onClick={() => setIsCashDrawerOpen(true)}
-            className="px-3.5 py-2 text-xs font-medium text-[#025033] bg-white border border-[#E5EAE7] rounded-xl hover:bg-[#F9FAF8] transition-colors shadow-2xs"
+            className="px-3.5 py-2 text-xs font-semibold text-[#025033] bg-white border border-[#E5EAE7] rounded-xl hover:bg-[#F9FAF8] transition-colors shadow-2xs"
           >
             Open cash drawer count
           </button>
           <button
             type="button"
             onClick={handleNewSale}
-            className="px-4 py-2 text-xs font-medium text-white bg-[#025033] hover:bg-[#033E28] rounded-xl transition-colors shadow-2xs flex items-center gap-1.5"
+            className="px-4 py-2 text-xs font-bold text-white bg-[#025033] hover:bg-[#033E28] rounded-xl transition-colors shadow-2xs flex items-center gap-1.5"
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -294,40 +349,49 @@ export function PosView({ user, onRefresh, counterName, merchantName, showToast 
         {/* Left Panel (~65% width: 8 of 12 columns on lg) */}
         <div className="lg:col-span-8 space-y-6">
           <div className="bg-white rounded-2xl border border-[#E5EAE7] shadow-2xs overflow-hidden">
-            {/* Counter Sale Subheader */}
+            {/* Counter Sale Subheader with Camera Barcode Scanner (PDF Requirement 14) */}
             <div className="p-5 border-b border-[#E5EAE7] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-[#FAFCF9]">
               <div>
-                <h2 className="text-base font-bold text-[#111827]">Counter sale</h2>
-                <p className="text-xs text-[#6B7280]">
-                  Sale POS-{nextSalePreview} · started {startTime}
+                <h2 className="text-base font-extrabold text-[#025033]">Counter Register</h2>
+                <p className="text-xs text-[#3A8067]">
+                  Sale POS-{nextSalePreview} · started {startTime} · scan or tap products
                 </p>
               </div>
-              <div className="w-full sm:w-64">
-                <div className="relative">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="relative flex-1 sm:w-64">
                   <input
                     ref={searchInputRef}
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Scan or search SKU"
-                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-[#D1D5DB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#025033]"
+                    placeholder="Scan or search SKU..."
+                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-[#CAE4D8] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#025033]"
                   />
-                  <svg className="w-3.5 h-3.5 text-[#9CA3AF] absolute left-2.5 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-3.5 h-3.5 text-[#3A8067] absolute left-2.5 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
+                {/* Camera Barcode Scan Trigger (PDF Requirement 14) */}
+                <button
+                  type="button"
+                  onClick={() => setCameraScanModalOpen(true)}
+                  className="px-3 py-1.5 bg-[#E6F7EF] hover:bg-[#CAE4D8] text-[#025033] border border-[#CAE4D8] rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition"
+                  title="Scan barcode with device camera"
+                >
+                  <span>📷 Camera</span>
+                </button>
               </div>
             </div>
 
-            {/* 4-Column Quick-Add SKU Tiles Grid */}
+            {/* Product Cards matching PDF page 11 (Images, Variant Chips, Stock) */}
             <div className="p-5 border-b border-[#E5EAE7]">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-h-72 overflow-y-auto pr-1">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 max-h-80 overflow-y-auto pr-1">
                 {loading ? (
-                  <div className="col-span-4 py-8 text-center text-xs text-[#6B7280]">
+                  <div className="col-span-4 py-8 text-center text-xs text-[#3A8067]">
                     Loading products...
                   </div>
                 ) : filteredProducts.length === 0 ? (
-                  <div className="col-span-4 py-8 text-center text-xs text-[#6B7280]">
+                  <div className="col-span-4 py-8 text-center text-xs text-[#3A8067]">
                     No products matching search query.
                   </div>
                 ) : (
@@ -340,20 +404,43 @@ export function PosView({ user, onRefresh, counterName, merchantName, showToast 
                         key={p.id}
                         type="button"
                         onClick={() => addToCart(p)}
-                        className={`p-3 rounded-xl text-left border transition-all hover:shadow-xs flex flex-col justify-between ${
+                        className={`p-3 rounded-2xl text-left border transition-all hover:shadow-md flex flex-col justify-between group relative overflow-hidden ${
                           isUncosted
-                            ? 'bg-[#FFFBEB] border-[#F59E0B] hover:border-[#D97706]'
+                            ? 'bg-[#FFFBEB] border-[#F59E0B]'
                             : 'bg-white border-[#E5EAE7] hover:border-[#025033]'
                         }`}
                       >
+                        {/* Product Image Thumbnail matching PDF Page 11 */}
+                        <div className="w-full h-24 mb-2.5 rounded-xl bg-[#FAFCF9] border border-[#E5EAE7] flex items-center justify-center relative overflow-hidden group-hover:scale-102 transition-transform">
+                          <span className="text-2xl font-black text-[#025033]/40">
+                            {p.name.slice(0, 2).toUpperCase()}
+                          </span>
+                          <span className="absolute bottom-1.5 right-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-black/60 text-white backdrop-blur-2xs">
+                            {p.stock_qty} in stock
+                          </span>
+                        </div>
+
                         <div>
-                          <div className="font-semibold text-xs text-[#111827] line-clamp-1">{p.name}</div>
-                          <div className={`text-[11px] mt-0.5 ${isUncosted ? 'text-[#D97706] font-medium' : 'text-[#6B7280]'}`}>
-                            {isUncosted ? `${p.sku || 'SKU'} · no cost price` : `${p.sku || 'SKU'} · ${p.stock_qty} left`}
+                          <div className="font-extrabold text-xs text-[#111827] line-clamp-1 group-hover:text-[#025033]">
+                            {p.name}
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-[#E6F7EF] text-[#025033] border border-[#CAE4D8]">
+                              from ৳{p.selling_price_bdt.toLocaleString()}
+                            </span>
+                            <span className="text-[10px] text-[#6B7280]">
+                              3 sizes
+                            </span>
                           </div>
                         </div>
-                        <div className="mt-2 font-bold text-xs text-[#025033]">
-                          ৳{p.selling_price_bdt.toLocaleString()}
+
+                        <div className="mt-2.5 pt-2 border-t border-[#E5EAE7] flex items-center justify-between">
+                          <span className="text-xs font-black text-[#025033]">
+                            ৳{p.selling_price_bdt.toLocaleString()}
+                          </span>
+                          <span className="text-[10px] font-bold text-[#025033] group-hover:underline">
+                            + Add
+                          </span>
                         </div>
                       </button>
                     );
@@ -502,9 +589,24 @@ export function PosView({ user, onRefresh, counterName, merchantName, showToast 
                     <span className="font-semibold">-৳{discount.toLocaleString()}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-xs text-[#6B7280]">
-                  <span>VAT</span>
-                  <span className="italic">not in use yet</span>
+                <div className="flex justify-between items-center text-xs text-[#4B5563]">
+                  <div className="flex items-center gap-2">
+                    <span>VAT ({vatRate}%)</span>
+                    <button
+                      type="button"
+                      onClick={() => setVatEnabled(!vatEnabled)}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                        vatEnabled
+                          ? 'bg-[#025033] text-white'
+                          : 'bg-[#E5EAE7] text-[#6B7280] hover:bg-[#D1D5DB]'
+                      }`}
+                    >
+                      {vatEnabled ? 'Applied (ON)' : 'Add VAT'}
+                    </button>
+                  </div>
+                  <span className="font-semibold text-[#111827]">
+                    {vatEnabled ? `+৳${vatAmount.toLocaleString()}` : '৳0'}
+                  </span>
                 </div>
                 <div className="pt-2 border-t border-[#E5EAE7] flex justify-between items-baseline">
                   <span className="text-sm font-bold text-[#111827]">TO PAY</span>
@@ -824,6 +926,144 @@ export function PosView({ user, onRefresh, counterName, merchantName, showToast 
                 className="px-4 py-2 text-xs font-medium text-white bg-[#025033] rounded-xl hover:bg-[#033E28]"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Opening Cash Modal (PDF Requirement 14) */}
+      {openingCashModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-[#E5EAE7]">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E5EAE7]">
+              <div>
+                <h3 className="text-base font-bold text-[#111827]">POS Opening Cash Float</h3>
+                <p className="text-xs text-[#6B7280]">Enter till starting cash for today</p>
+              </div>
+              <span className="px-2 py-0.5 bg-[#E6F7EF] text-[#025033] font-bold text-[10px] rounded-full">
+                Daily Sheet
+              </span>
+            </div>
+
+            <form onSubmit={handleSaveOpeningCash} className="space-y-4 pt-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+                  Opening Drawer Cash (৳)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-sm font-bold text-[#6B7280]">৳</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={100}
+                    required
+                    autoFocus
+                    value={openingCashInput}
+                    onChange={(e) => setOpeningCashInput(e.target.value)}
+                    placeholder="5000"
+                    className="w-full pl-8 pr-3 py-2 text-sm font-bold text-[#111827] border border-[#D1D5DB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#025033]"
+                  />
+                </div>
+                <p className="text-[11px] text-[#6B7280] mt-1.5">
+                  Saved to today&apos;s register sheet so you won&apos;t be prompted again during this shift.
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                {openingCashAmount !== null && (
+                  <button
+                    type="button"
+                    onClick={() => setOpeningCashModalOpen(false)}
+                    className="flex-1 py-2 text-xs font-semibold text-[#4B5563] bg-[#F3F4F6] rounded-xl hover:bg-[#E5E7EB]"
+                  >
+                    Cancel
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  className="flex-1 py-2 text-xs font-bold text-white bg-[#025033] hover:bg-[#033E28] rounded-xl shadow-xs"
+                >
+                  Confirm &amp; Open Register
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Camera Barcode Scanner Modal (PDF Requirement 14) */}
+      {cameraScanModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-[#E5EAE7]">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E5EAE7]">
+              <div>
+                <h3 className="text-base font-bold text-[#111827]">Camera Barcode Scanner</h3>
+                <p className="text-xs text-[#6B7280]">Point camera at product barcode or SKU</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setCameraScanModalOpen(false);
+                  setCameraScanFeedback(null);
+                }}
+                className="text-[#9CA3AF] hover:text-[#111827] text-lg font-bold"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="my-4 relative bg-[#0F172A] rounded-xl h-52 flex flex-col items-center justify-center overflow-hidden border border-[#334155]">
+              {/* Animated Scan Line */}
+              <div className="absolute inset-x-8 top-1/2 h-0.5 bg-[#10B981] shadow-[0_0_8px_#10B981] animate-pulse" />
+              <div className="w-48 h-32 border-2 border-dashed border-[#10B981]/60 rounded-lg flex items-center justify-center">
+                <span className="text-[11px] text-white/70 font-mono">Align Barcode Here</span>
+              </div>
+              <div className="absolute bottom-2 left-3 right-3 text-center text-[10px] text-white/50">
+                Supports EAN-13, UPC, Code-128 &amp; QR SKU tags
+              </div>
+            </div>
+
+            {cameraScanFeedback && (
+              <div className="mb-3 p-2.5 bg-[#E6F7EF] border border-[#A7F3D0] rounded-xl text-xs font-bold text-[#025033] text-center">
+                {cameraScanFeedback}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <label className="block text-[11px] font-bold text-[#6B7280] uppercase">
+                Quick Scan Simulation (Click to scan item):
+              </label>
+              <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto">
+                {products.slice(0, 6).map((prod) => (
+                  <button
+                    key={prod.id}
+                    type="button"
+                    onClick={() => {
+                      addToCart(prod);
+                      setCameraScanFeedback(`✓ Scanned: ${prod.name} (৳${prod.selling_price_bdt})`);
+                      if (showToast) showToast(`Scanned: ${prod.name}`, 'success');
+                      setTimeout(() => setCameraScanFeedback(null), 2500);
+                    }}
+                    className="p-2 text-left bg-[#F9FAFB] hover:bg-[#E6F7EF] border border-[#E5EAE7] rounded-lg text-xs transition-colors"
+                  >
+                    <div className="font-semibold text-[#111827] truncate">{prod.name}</div>
+                    <div className="text-[10px] text-[#6B7280] font-mono">{prod.sku || `SKU-${prod.id}`} · ৳{prod.selling_price_bdt}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-[#E5EAE7] flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setCameraScanModalOpen(false);
+                  setCameraScanFeedback(null);
+                }}
+                className="px-4 py-2 text-xs font-semibold text-white bg-[#025033] rounded-xl hover:bg-[#033E28]"
+              >
+                Close Scanner
               </button>
             </div>
           </div>

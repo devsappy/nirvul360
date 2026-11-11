@@ -39,6 +39,40 @@ export function SuppliersView({ products: propsProducts, onOpenNewPurchase }: Su
   const [paymentNote, setPaymentNote] = useState('');
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
 
+  // Add Supplier Modal State (PDF Requirement 7)
+  const [addSupplierModalOpen, setAddSupplierModalOpen] = useState(false);
+  const [newSupName, setNewSupName] = useState('');
+  const [newSupPhone, setNewSupPhone] = useState('');
+  const [newSupAddress, setNewSupAddress] = useState('');
+  const [newSupTerms, setNewSupTerms] = useState('30');
+  const [newSupCategory, setNewSupCategory] = useState('');
+  const [isSavingSupplier, setIsSavingSupplier] = useState(false);
+
+  const handleCreateSupplier = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSupName.trim()) return;
+    setIsSavingSupplier(true);
+    try {
+      await apiSuppliers.create({
+        name: newSupName.trim(),
+        phone: newSupPhone.trim() || undefined,
+        address: newSupAddress.trim() || undefined,
+        terms_days: parseInt(newSupTerms, 10) || 30,
+        categories_summary: newSupCategory.trim() || undefined,
+      });
+      setAddSupplierModalOpen(false);
+      setNewSupName('');
+      setNewSupPhone('');
+      setNewSupAddress('');
+      setNewSupCategory('');
+      await loadSuppliers();
+    } catch (err: any) {
+      alert(err.message || 'Failed to add supplier');
+    } finally {
+      setIsSavingSupplier(false);
+    }
+  };
+
   // OCR Memo Draft State initialized cleanly as null
   const [memoDraft, setMemoDraft] = useState<MemoDraftData | null>(null);
 
@@ -198,6 +232,12 @@ export function SuppliersView({ products: propsProducts, onOpenNewPurchase }: Su
 
         <div className="flex items-center gap-3 shrink-0">
           <button
+            onClick={() => setAddSupplierModalOpen(true)}
+            className="border border-[#025033] bg-[#E6F7EF] hover:bg-[#CAE4D8] text-[#025033] px-3.5 py-2 rounded-xl text-xs font-bold shadow-2xs transition"
+          >
+            + Add supplier
+          </button>
+          <button
             onClick={() => setPaymentModalOpen(true)}
             className="border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-semibold shadow-2xs transition"
           >
@@ -218,10 +258,18 @@ export function SuppliersView({ products: propsProducts, onOpenNewPurchase }: Su
         <div className="lg:col-span-3 flex flex-col gap-3">
           <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden flex flex-col">
             <div className="p-3.5 border-b border-slate-100 flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Suppliers</span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                {suppliers.length}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Suppliers</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                  {suppliers.length}
+                </span>
+              </div>
+              <button
+                onClick={() => setAddSupplierModalOpen(true)}
+                className="text-xs font-bold text-[#025033] hover:underline"
+              >
+                + Add
+              </button>
             </div>
 
             {/* Vendor Items List */}
@@ -697,6 +745,107 @@ export function SuppliersView({ products: propsProducts, onOpenNewPurchase }: Su
                   className="px-4 py-2 bg-[#062E1F] hover:bg-[#0B3B28] text-white rounded-xl text-xs font-semibold"
                 >
                   {isSubmittingPayment ? 'Recording...' : 'Post payment'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Add Supplier Modal (PDF Requirement 7) */}
+      {addSupplierModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#00432C]/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl p-6 border border-[#CAE4D8] max-w-md w-full shadow-2xl flex flex-col gap-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E5EAE7]">
+              <div>
+                <h3 className="text-base font-extrabold text-[#025033]">Add New Supplier</h3>
+                <p className="text-xs text-[#3A8067]">
+                  Register vendor for purchasing, fabric batches &amp; running ledger.
+                </p>
+              </div>
+              <button
+                onClick={() => setAddSupplierModalOpen(false)}
+                className="text-[#3A8067] hover:text-[#025033] text-lg font-bold"
+              >
+                &times;
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSupplier} className="flex flex-col gap-3.5">
+              <div>
+                <label className="block text-xs font-bold text-[#025033] mb-1">
+                  Supplier Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Noman Fabrics Ltd / Islampur"
+                  value={newSupName}
+                  onChange={(e) => setNewSupName(e.target.value)}
+                  className="w-full bg-[#FAFCF9] border border-[#E5EAE7] rounded-xl px-3 py-2 text-xs font-semibold text-[#025033] focus:outline-none focus:border-[#025033]"
+                  autoFocus
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-[#025033] mb-1">Phone Number</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 01711-XXXXXX"
+                    value={newSupPhone}
+                    onChange={(e) => setNewSupPhone(e.target.value)}
+                    className="w-full bg-[#FAFCF9] border border-[#E5EAE7] rounded-xl px-3 py-2 text-xs text-[#025033] focus:outline-none focus:border-[#025033]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#025033] mb-1">Credit Terms (Days)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="30"
+                    value={newSupTerms}
+                    onChange={(e) => setNewSupTerms(e.target.value)}
+                    className="w-full bg-[#FAFCF9] border border-[#E5EAE7] rounded-xl px-3 py-2 text-xs text-[#025033] focus:outline-none focus:border-[#025033]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#025033] mb-1">Address / Market Location</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Shop 42, Islampur Market, Dhaka"
+                  value={newSupAddress}
+                  onChange={(e) => setNewSupAddress(e.target.value)}
+                  className="w-full bg-[#FAFCF9] border border-[#E5EAE7] rounded-xl px-3 py-2 text-xs text-[#025033] focus:outline-none focus:border-[#025033]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#025033] mb-1">Material Categories</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Silk, Cotton, Buttons &amp; Zippers"
+                  value={newSupCategory}
+                  onChange={(e) => setNewSupCategory(e.target.value)}
+                  className="w-full bg-[#FAFCF9] border border-[#E5EAE7] rounded-xl px-3 py-2 text-xs text-[#025033] focus:outline-none focus:border-[#025033]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[#E5EAE7]">
+                <button
+                  type="button"
+                  onClick={() => setAddSupplierModalOpen(false)}
+                  className="px-4 py-2 border border-[#E5EAE7] rounded-xl text-xs font-bold text-[#3A8067] hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingSupplier}
+                  className="px-5 py-2 bg-[#025033] hover:bg-[#05572F] text-white rounded-xl text-xs font-bold transition shadow-xs"
+                >
+                  {isSavingSupplier ? 'Saving...' : 'Add Supplier'}
                 </button>
               </div>
             </form>

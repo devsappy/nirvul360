@@ -309,6 +309,7 @@ export function OrdersView({ onRefreshParent, onOpenOrderModal, showToast }: Ord
                   <option value="pathao">Pathao</option>
                   <option value="steadfast">Steadfast</option>
                   <option value="redx">RedX</option>
+                  <option value="cash_others">Cash / Others</option>
                 </select>
               </div>
             </div>
@@ -610,6 +611,7 @@ export function OrdersView({ onRefreshParent, onOpenOrderModal, showToast }: Ord
                     <option value="pathao">Pathao</option>
                     <option value="steadfast">Steadfast</option>
                     <option value="redx">RedX</option>
+                    <option value="cash_others">Cash / Others</option>
                   </select>
                 </div>
               </div>

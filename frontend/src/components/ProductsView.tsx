@@ -54,6 +54,81 @@ export function ProductsView({
   const [newSinglePrice, setNewSinglePrice] = useState('');
   const [isSavingSinglePrice, setIsSavingSinglePrice] = useState(false);
 
+  // Persistent Multi-Selection State (persists across different searches - PDF Req 6)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  // Variation Grouping State (PDF Req 6)
+  const [groupByVariations, setGroupByVariations] = useState<boolean>(true);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+  // Bulk Actions State (PDF Req 6)
+  const [bulkModalType, setBulkModalType] = useState<'cost' | 'selling' | 'stock' | null>(null);
+  const [bulkInputValue, setBulkInputValue] = useState<string>('');
+  const [isExecutingBulk, setIsExecutingBulk] = useState<boolean>(false);
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = (ids: number[]) => {
+    setSelectedIds((prev) => {
+      const allSelected = ids.every((id) => prev.has(id));
+      const next = new Set(prev);
+      if (allSelected) {
+        ids.forEach((id) => next.delete(id));
+      } else {
+        ids.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+  };
+
+  const toggleGroupExpand = (key: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const handleBulkExecute = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const val = parseFloat(bulkInputValue);
+    if (isNaN(val) || val < 0 || selectedIds.size === 0) return;
+
+    setIsExecutingBulk(true);
+    try {
+      const ids = Array.from(selectedIds);
+      for (const id of ids) {
+        if (bulkModalType === 'cost') {
+          await api.patch(`/api/products/${id}/price`, { cost_price: val, note: 'Bulk cost update' });
+        } else if (bulkModalType === 'selling') {
+          await api.patch(`/api/products/${id}/price`, { selling_price: val });
+        } else if (bulkModalType === 'stock') {
+          await api.post(`/api/products/${id}/stock`, { qty: Math.round(val), reason: 'Bulk stock update' });
+        }
+      }
+      setBulkModalType(null);
+      setBulkInputValue('');
+      clearSelection();
+      onRefresh();
+    } catch (err: any) {
+      alert(err.message || 'Failed to apply bulk update');
+    } finally {
+      setIsExecutingBulk(false);
+    }
+  };
+
   // Calculate missing cost prices and unvalued inventory
   const unpricedProducts = useMemo(() => {
     return products.filter((p) => p.cost_price === undefined || p.cost_price === null || p.cost_price <= 0);
@@ -258,6 +333,51 @@ export function ProductsView({
     });
   }, [products, filterMissingOnly, searchQuery]);
 
+  // Grouped variations (PDF Requirement 6: group variations so sizes/colors count as one product)
+  const groupedProducts = useMemo(() => {
+    if (!groupByVariations) {
+      return filteredProducts.map((p) => ({
+        groupKey: `prod-${p.id}`,
+        baseName: p.name,
+        items: [p],
+        totalStock: p.stock_qty || 0,
+        minSelling: p.selling_price || 0,
+        maxSelling: p.selling_price || 0,
+        minCost: p.cost_price || null,
+        maxCost: p.cost_price || null,
+        hasVariations: false,
+      }));
+    }
+
+    const map = new Map<string, Product[]>();
+    for (const p of filteredProducts) {
+      const base = p.name
+        .replace(/\s*[-–/]\s*(s|m|l|xl|xxl|xxxl|\d{2,4})\b/i, '')
+        .replace(/\s*\((s|m|l|xl|xxl|size\s*\d+)\)/i, '')
+        .trim();
+      if (!map.has(base)) map.set(base, []);
+      map.get(base)!.push(p);
+    }
+
+    return Array.from(map.entries()).map(([baseName, items]) => {
+      const totalStock = items.reduce((s, it) => s + (it.stock_qty || 0), 0);
+      const sellings = items.map((it) => it.selling_price || 0);
+      const costs = items.map((it) => it.cost_price).filter((c): c is number => c !== undefined && c !== null && c > 0);
+
+      return {
+        groupKey: baseName,
+        baseName,
+        items,
+        totalStock,
+        minSelling: Math.min(...sellings),
+        maxSelling: Math.max(...sellings),
+        minCost: costs.length > 0 ? Math.min(...costs) : null,
+        maxCost: costs.length > 0 ? Math.max(...costs) : null,
+        hasVariations: items.length > 1,
+      };
+    });
+  }, [filteredProducts, groupByVariations]);
+
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-12 relative">
       {/* Header matching Improvements/6.jpeg */}
@@ -319,24 +439,92 @@ export function ProductsView({
         </div>
       )}
 
+      {/* Persistent Multi-Selection Floating Action Bar (PDF Req 6) */}
+      {selectedIds.size > 0 && (
+        <div className="sticky top-4 z-40 bg-[#025033] text-white rounded-2xl p-4 px-6 flex flex-wrap items-center justify-between gap-4 shadow-xl border border-[#00432C] animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center font-black text-sm">
+              {selectedIds.size}
+            </span>
+            <div>
+              <span className="font-extrabold text-sm block">
+                {selectedIds.size} {selectedIds.size === 1 ? 'item' : 'items'} selected across search queries
+              </span>
+              <span className="text-xs text-[#CAE4D8]">
+                Changes will be applied to all selected items
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <button
+              onClick={() => {
+                setBulkModalType('cost');
+                setBulkInputValue('');
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-white text-[#025033] hover:bg-[#E6F7EF] font-bold text-xs shadow-xs transition"
+            >
+              Bulk Cost Price
+            </button>
+            <button
+              onClick={() => {
+                setBulkModalType('selling');
+                setBulkInputValue('');
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-white text-[#025033] hover:bg-[#E6F7EF] font-bold text-xs shadow-xs transition"
+            >
+              Change Selling Price
+            </button>
+            <button
+              onClick={() => {
+                setBulkModalType('stock');
+                setBulkInputValue('');
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-white text-[#025033] hover:bg-[#E6F7EF] font-bold text-xs shadow-xs transition"
+            >
+              Update Stock
+            </button>
+            <button
+              onClick={clearSelection}
+              className="px-3 py-1.5 rounded-xl bg-[#05572F] hover:bg-[#00432C] text-[#CAE4D8] font-semibold text-xs border border-[#3A8067] transition"
+            >
+              Clear Selection
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Products SKU Table */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100">
           <div className="flex flex-col">
             <span className="text-sm font-bold text-slate-900">Products</span>
             <span className="text-xs text-slate-500">
-              Cost price is the price in effect on the delivery date, never an average and never a percentage
+              Cost price is versioned on delivery date · Multi-select persists across search queries
             </span>
           </div>
 
-          <div className="relative w-full sm:w-64">
-            <input
-              type="text"
-              placeholder="Search SKU or name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full text-xs px-3 py-1.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#062E1F]"
-            />
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Group Variations Toggle (PDF Req 6) */}
+            <label className="flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-100 transition text-xs font-semibold text-slate-700">
+              <input
+                type="checkbox"
+                checked={groupByVariations}
+                onChange={(e) => setGroupByVariations(e.target.checked)}
+                className="rounded text-[#025033] focus:ring-[#025033]"
+              />
+              <span>Group variations (sizes/colors)</span>
+            </label>
+
+            <div className="relative w-full sm:w-64">
+              <input
+                type="text"
+                placeholder="Search SKU or name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full text-xs px-3 py-1.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#062E1F]"
+              />
+            </div>
           </div>
         </div>
 
@@ -345,8 +533,18 @@ export function ProductsView({
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400">
+                <th className="py-2.5 px-3 w-8">
+                  <input
+                    type="checkbox"
+                    checked={filteredProducts.length > 0 && filteredProducts.every((p) => selectedIds.has(p.id))}
+                    onChange={() => toggleSelectAll(filteredProducts.map((p) => p.id))}
+                    className="rounded text-[#025033] focus:ring-[#025033]"
+                    title="Select all filtered products"
+                  />
+                </th>
+                <th className="py-2.5 px-3 w-12">IMAGE</th>
                 <th className="py-2.5 px-3">SKU</th>
-                <th className="py-2.5 px-3">NAME</th>
+                <th className="py-2.5 px-3">NAME &amp; VARIATIONS</th>
                 <th className="py-2.5 px-3 text-right">COST PRICE</th>
                 <th className="py-2.5 px-3 text-right">SELLING PRICE</th>
                 <th className="py-2.5 px-3 text-right">MARGIN</th>
@@ -355,21 +553,164 @@ export function ProductsView({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-normal">
-              {filteredProducts.map((p) => {
+              {groupedProducts.map((group) => {
+                const isExpanded = expandedGroups.has(group.groupKey);
+                const groupItemIds = group.items.map((i) => i.id);
+                const isGroupSelected = groupItemIds.length > 0 && groupItemIds.every((id) => selectedIds.has(id));
+                const isPartiallySelected = groupItemIds.some((id) => selectedIds.has(id)) && !isGroupSelected;
+
+                if (group.hasVariations && groupByVariations) {
+                  return (
+                    <React.Fragment key={group.groupKey}>
+                      <tr className={`hover:bg-slate-50/80 transition ${isGroupSelected ? 'bg-[#E6F7EF]/40' : ''}`}>
+                        <td className="py-3 px-3">
+                          <input
+                            type="checkbox"
+                            checked={isGroupSelected}
+                            ref={(el) => {
+                              if (el) el.indeterminate = isPartiallySelected;
+                            }}
+                            onChange={() => toggleSelectAll(groupItemIds)}
+                            className="rounded text-[#025033] focus:ring-[#025033]"
+                          />
+                        </td>
+                        <td className="py-3 px-3">
+                          <div className="w-9 h-9 rounded-xl bg-[#E6F7EF] border border-[#CAE4D8] flex items-center justify-center font-black text-xs text-[#025033]">
+                            {group.baseName.slice(0, 2).toUpperCase()}
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 font-semibold text-slate-800 whitespace-nowrap">
+                          {group.items[0]?.sku?.split('-')[0] || `GRP-${group.items[0]?.id}`}
+                        </td>
+                        <td className="py-3 px-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-900">{group.baseName}</span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E6F7EF] text-[#025033] border border-[#CAE4D8]">
+                              {group.items.length} variations
+                            </span>
+                            <button
+                              onClick={() => toggleGroupExpand(group.groupKey)}
+                              className="text-[11px] text-[#025033] font-bold hover:underline ml-1"
+                            >
+                              {isExpanded ? 'Hide ▲' : 'View all ▼'}
+                            </button>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 text-right font-medium text-slate-800">
+                          {group.minCost !== null
+                            ? group.minCost === group.maxCost
+                              ? formatTaka(group.minCost)
+                              : `${formatTaka(group.minCost)} – ${formatTaka(group.maxCost || group.minCost)}`
+                            : 'Unpriced'}
+                        </td>
+                        <td className="py-3 px-3 text-right font-bold text-slate-900">
+                          {group.minSelling === group.maxSelling
+                            ? formatTaka(group.minSelling)
+                            : `from ${formatTaka(group.minSelling)}`}
+                        </td>
+                        <td className="py-3 px-3 text-right text-slate-600 font-semibold">
+                          {group.minCost && group.minSelling
+                            ? `${(((group.minSelling - group.minCost) / group.minSelling) * 100).toFixed(1)}%`
+                            : '—'}
+                        </td>
+                        <td className="py-3 px-3 text-right font-black text-[#025033]">
+                          {group.totalStock} units
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          <button
+                            onClick={() => toggleGroupExpand(group.groupKey)}
+                            className="px-2.5 py-1 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+                          >
+                            {isExpanded ? 'Collapse' : 'Manage Variants'}
+                          </button>
+                        </td>
+                      </tr>
+
+                      {/* Expandable variant rows */}
+                      {isExpanded &&
+                        group.items.map((v) => {
+                          const isVSelected = selectedIds.has(v.id);
+                          const hasCost = v.cost_price && v.cost_price > 0;
+                          return (
+                            <tr key={v.id} className="bg-slate-50/50 hover:bg-slate-100/60 transition pl-6">
+                              <td className="py-2.5 px-3 pl-6">
+                                <input
+                                  type="checkbox"
+                                  checked={isVSelected}
+                                  onChange={() => toggleSelect(v.id)}
+                                  className="rounded text-[#025033] focus:ring-[#025033]"
+                                />
+                              </td>
+                              <td className="py-2.5 px-3">
+                                <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600">
+                                  {v.sku ? v.sku.slice(-2) : '•'}
+                                </div>
+                              </td>
+                              <td className="py-2.5 px-3 font-mono text-[11px] text-slate-600">
+                                {v.sku || `PROD-${v.id}`}
+                              </td>
+                              <td className="py-2.5 px-3 text-slate-700 pl-4">
+                                ↳ {v.name}
+                              </td>
+                              <td className="py-2.5 px-3 text-right text-slate-700">
+                                {hasCost ? formatTaka(v.cost_price) : <span className="text-red-600 font-bold">No cost</span>}
+                              </td>
+                              <td className="py-2.5 px-3 text-right text-slate-700">
+                                {formatTaka(v.selling_price)}
+                              </td>
+                              <td className="py-2.5 px-3 text-right text-slate-500">
+                                {hasCost && v.selling_price
+                                  ? `${(((v.selling_price - (v.cost_price || 0)) / v.selling_price) * 100).toFixed(1)}%`
+                                  : '—'}
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-medium text-slate-800">
+                                {v.stock_qty || 0}
+                              </td>
+                              <td className="py-2.5 px-3 text-right">
+                                <button
+                                  onClick={() => setHistoryPopoverProduct(v)}
+                                  className="px-2 py-0.5 border border-slate-200 rounded text-[11px] text-slate-600 hover:bg-white"
+                                >
+                                  History
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </React.Fragment>
+                  );
+                }
+
+                // Single product row (not grouped or single variant)
+                const p = group.items[0];
                 const hasCost = p.cost_price && p.cost_price > 0;
                 const sellingTaka = p.selling_price ? p.selling_price / 100 : 0;
                 const costTaka = p.cost_price ? p.cost_price / 100 : 0;
-                const marginPct = (hasCost && sellingTaka > 0)
+                const marginPct = hasCost && sellingTaka > 0
                   ? (((sellingTaka - costTaka) / sellingTaka) * 100).toFixed(1)
                   : null;
+                const isSelected = selectedIds.has(p.id);
 
                 return (
                   <tr
                     key={p.id}
                     className={`transition ${
-                      !hasCost ? 'bg-[#FEF2F2]/60 hover:bg-[#FEF2F2]' : 'hover:bg-slate-50/70'
+                      isSelected ? 'bg-[#E6F7EF]/40' : !hasCost ? 'bg-[#FEF2F2]/60 hover:bg-[#FEF2F2]' : 'hover:bg-slate-50/70'
                     }`}
                   >
+                    <td className="py-3 px-3">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelect(p.id)}
+                        className="rounded text-[#025033] focus:ring-[#025033]"
+                      />
+                    </td>
+                    <td className="py-3 px-3">
+                      <div className="w-9 h-9 rounded-xl bg-[#E6F7EF] border border-[#CAE4D8] flex items-center justify-center font-black text-xs text-[#025033]">
+                        {p.name.slice(0, 2).toUpperCase()}
+                      </div>
+                    </td>
                     <td className="py-3 px-3 font-semibold text-slate-800 whitespace-nowrap">
                       {p.sku || `PROD-${p.id}`}
                     </td>
@@ -835,6 +1176,61 @@ export function ProductsView({
                   className="px-4 py-2 bg-[#062E1F] hover:bg-[#0B3B28] text-white rounded-xl text-xs font-semibold"
                 >
                   {isSavingSinglePrice ? 'Saving...' : 'Set Price'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Bulk Action Modal (PDF Requirement 6) */}
+      {bulkModalType && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 max-w-sm w-full shadow-2xl flex flex-col gap-4">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">
+                {bulkModalType === 'cost'
+                  ? 'Bulk Update Cost Price'
+                  : bulkModalType === 'selling'
+                  ? 'Change Selling Price'
+                  : 'Update Stock Units'}
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Applying to {selectedIds.size} selected products.
+              </p>
+            </div>
+
+            <form onSubmit={handleBulkExecute} className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-700">
+                  {bulkModalType === 'stock' ? 'New Stock Quantity' : 'New Price (৳)'}
+                </label>
+                <input
+                  type="number"
+                  required
+                  step={bulkModalType === 'stock' ? '1' : '0.01'}
+                  min="0"
+                  placeholder={bulkModalType === 'stock' ? 'e.g. 50' : 'e.g. 450.00'}
+                  value={bulkInputValue}
+                  onChange={(e) => setBulkInputValue(e.target.value)}
+                  className="text-xs px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#025033]"
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setBulkModalType(null)}
+                  className="px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isExecutingBulk}
+                  className="px-4 py-2 bg-[#025033] hover:bg-[#05572F] text-white rounded-xl text-xs font-bold transition shadow-xs"
+                >
+                  {isExecutingBulk ? 'Applying Changes...' : 'Apply to Selected'}
                 </button>
               </div>
             </form>

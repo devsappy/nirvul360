@@ -369,7 +369,7 @@ export function IntegrationsView({
           <button
             onClick={handleSyncAll}
             disabled={isSyncingAll}
-            className="bg-[#062E1F] hover:bg-[#0B3B28] disabled:opacity-50 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-xs transition"
+            className="bg-[#062E1F] hover:bg-[#0B3B28] disabled:opacity-50 text-white px-4.5 py-2.5 rounded-xl text-sm font-semibold shadow-xs transition"
           >
             {isSyncingAll ? 'Syncing...' : 'Sync all now'}
           </button>
@@ -387,7 +387,7 @@ export function IntegrationsView({
           </div>
           <button
             onClick={() => setTokenModalOpen(true)}
-            className="bg-white hover:bg-red-50 text-red-800 border border-red-300 font-semibold px-3.5 py-2 rounded-xl text-xs shadow-2xs shrink-0 self-start sm:self-auto transition"
+            className="bg-white hover:bg-red-50 text-red-800 border border-red-300 font-semibold px-4 py-2 rounded-xl text-sm shadow-2xs shrink-0 self-start sm:self-auto transition"
           >
             {data.alert.action_label}
           </button>
@@ -429,7 +429,7 @@ export function IntegrationsView({
                   </div>
                   <div className="flex flex-col">
                     <span className="text-sm font-bold text-slate-900 leading-tight">{card.name}</span>
-                    <span className="text-[11px] text-slate-500 capitalize leading-tight">{card.category?.replace('_', ' ')}</span>
+                    <span className="text-xs text-slate-600 font-medium capitalize leading-tight">{card.category?.replace('_', ' ')}</span>
                   </div>
                 </div>
 
@@ -437,7 +437,7 @@ export function IntegrationsView({
               </div>
 
               {/* Card Body: Key-Value Metric Rows */}
-              <div className="flex flex-col gap-1.5 text-xs">
+              <div className="flex flex-col gap-2 text-sm">
                 {card.last_sync !== undefined && (
                   <div className="flex justify-between py-0.5 border-b border-slate-100">
                     <span className="text-slate-500">Last successful sync:</span>

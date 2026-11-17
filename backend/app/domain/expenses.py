@@ -73,7 +73,7 @@ def get_expenses_summary(merchant_id: int, from_date: str, to_date: str, period:
         WHERE l.merchant_id = ?
           AND l.entry_date >= ? AND l.entry_date <= ?
           AND l.account IN (
-              'courier_delivery', 'courier_cod_fee', 'courier_return_fee', 'courier_recovery',
+              'courier_delivery', 'courier_cod_fee', 'courier_return_fee', 'courier_recovery', 'courier',
               'ad_spend', 'packaging', 'salary', 'rent', 'utilities', 'software', 'transport', 'other_expense'
           )
         GROUP BY l.account
@@ -86,6 +86,7 @@ def get_expenses_summary(merchant_id: int, from_date: str, to_date: str, period:
     # Courier charges net total
     courier_total = (
         t.get('courier_delivery', 0)
+        + t.get('courier', 0)
         + t.get('courier_cod_fee', 0)
         + t.get('courier_return_fee', 0)
         - t.get('courier_recovery', 0)
@@ -249,7 +250,7 @@ def get_expenses_summary(merchant_id: int, from_date: str, to_date: str, period:
         JOIN journals j ON j.id = l.journal_id
         WHERE l.merchant_id = ?
           AND l.account IN (
-              'courier_delivery','courier_cod_fee','courier_return_fee','courier_recovery',
+              'courier_delivery','courier_cod_fee','courier_return_fee','courier_recovery','courier',
               'ad_spend','packaging','salary','rent','utilities','software','transport','other_expense','owner_drawings'
           )
           AND l.entry_date >= ? AND l.entry_date <= ?
@@ -442,7 +443,7 @@ def create_recurring_expense(merchant_id: int, data: Dict[str, Any], actor: str 
         'posts_on_day': day,
         'cash_account_id': data.get('cash_account_id'),
         'note': data.get('note'),
-        'active': 1,
+        'active': True,
         'created_by': actor,
         'created_at': now_iso(),
         'updated_at': now_iso(),
@@ -475,7 +476,7 @@ def update_recurring_expense(merchant_id: int, expense_id: int, data: Dict[str, 
     if 'note' in data:
         changes['note'] = data['note']
     if 'active' in data and data['active'] is not None:
-        changes['active'] = 1 if data['active'] else 0
+        changes['active'] = bool(data['active'])
 
     update('recurring_expenses', expense_id, changes)
     return True

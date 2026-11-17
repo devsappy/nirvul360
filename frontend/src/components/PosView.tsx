@@ -149,10 +149,16 @@ export function PosView({ user, onRefresh, counterName, merchantName, showToast 
   // Filter products by search query
   const filteredProducts = useMemo(() => {
     if (!searchQuery.trim()) return products;
-    const q = searchQuery.toLowerCase().trim();
-    return products.filter(
-      p => p.name.toLowerCase().includes(q) || (p.sku && p.sku.toLowerCase().includes(q))
-    );
+    const raw = searchQuery.toLowerCase().trim();
+    // Support multi-product search (comma-separated or single query - PDF Requirement 14)
+    const terms = raw.includes(',')
+      ? raw.split(',').map(t => t.trim()).filter(Boolean)
+      : [raw];
+    return products.filter(p => {
+      const name = p.name.toLowerCase();
+      const sku = (p.sku || '').toLowerCase();
+      return terms.some(term => name.includes(term) || sku.includes(term));
+    });
   }, [products, searchQuery]);
 
   // Cart operations

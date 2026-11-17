@@ -167,7 +167,7 @@ export function DashboardKpis({ kpis }: DashboardKpisProps) {
         >
           <div className="flex items-start justify-between gap-1.5 flex-wrap">
             <span className="text-xs sm:text-sm font-bold text-[#025033] tracking-tight">Courier return %</span>
-            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#025033] text-white">
+            <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-[#025033] text-white">
               Drilldown ↗
             </span>
           </div>
@@ -179,14 +179,14 @@ export function DashboardKpis({ kpis }: DashboardKpisProps) {
                   e.stopPropagation();
                   handleOpenCourier(c);
                 }}
-                className="flex items-center justify-between px-2 py-1 rounded-lg bg-white border border-[#E5EAE7] hover:border-[#025033] transition"
+                className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-white border border-[#E5EAE7] hover:border-[#025033] transition"
               >
                 <span className="text-xs font-bold text-[#025033]">{c.name}</span>
                 <span className="text-xs font-black text-red-700">{c.return_pct.toFixed(1)}%</span>
               </div>
             ))}
           </div>
-          <div className="mt-auto pt-2 border-t border-[#E5EAE7] flex items-center justify-between text-[11px] text-[#3A8067]">
+          <div className="mt-auto pt-2 border-t border-[#E5EAE7] flex items-center justify-between text-xs text-[#3A8067]">
             <span className="truncate font-semibold">Click courier for 6m/1y analysis</span>
             <span className="font-bold text-[#025033]">📊</span>
           </div>
@@ -196,7 +196,7 @@ export function DashboardKpis({ kpis }: DashboardKpisProps) {
         <div className="min-h-[160px] sm:min-h-[170px] p-4 sm:p-5 rounded-2xl border border-[#E5EAE7] bg-[#FFFFFF] hover:border-[#3A8067] hover:shadow-xs transition shadow-2xs flex flex-col justify-between group">
           <div className="flex items-start justify-between gap-1.5 flex-wrap">
             <span className="text-xs sm:text-sm font-bold text-[#3A8067] tracking-tight">Total ad spend</span>
-            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#E6F7EF] text-[#025033] border border-[#CAE4D8]">
+            <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-[#E6F7EF] text-[#025033] border border-[#CAE4D8]">
               ৳{fxRate.toFixed(1)} / $
             </span>
           </div>

@@ -11,6 +11,54 @@ body {
   color: #025033;
   background-color: #E6F7EF;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-size: 0.9375rem; /* 15px base */
+  line-height: 1.5;
+}
+
+/* Accessibility & Readability: scale up small and microscopic text across all tabs */
+.text-\[9px\],
+[class*="text-[9px]"] {
+  font-size: 0.8125rem !important; /* was 9px -> now 13px */
+  line-height: 1.25rem !important;
+}
+
+.text-\[10px\],
+[class*="text-[10px]"] {
+  font-size: 0.8125rem !important; /* was 10px -> now 13px */
+  line-height: 1.25rem !important;
+}
+
+.text-\[11px\],
+[class*="text-[11px]"] {
+  font-size: 0.84375rem !important; /* was 11px -> now 13.5px */
+  line-height: 1.25rem !important;
+}
+
+.text-xs,
+[class*="text-xs"] {
+  font-size: 0.875rem !important; /* was 12px -> now 14px */
+  line-height: 1.25rem !important;
+}
+
+/* Ensure form controls are comfortably legible */
+input, select, textarea {
+  font-size: 0.875rem !important; /* 14px */
+}
+
+/* Improve contrast for faint gray text on light backgrounds */
+.text-slate-400,
+[class*="text-slate-400"] {
+  color: #64748b !important; /* slate-500: much clearer and passes contrast */
+}
+
+.text-zinc-400,
+[class*="text-zinc-400"] {
+  color: #71717a !important;
+}
+
+.text-gray-400,
+[class*="text-gray-400"] {
+  color: #6b7280 !important;
 }
 
 svg {

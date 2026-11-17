@@ -706,9 +706,11 @@ def resolve(merchant_id: int, exception_id: int, action: str, body: Dict[str, An
 
     # ---- unmatched_expense --------------------------------------------------------------
     elif e['type'] == 'unmatched_expense':
-        head = body.get('head') or body.get('category')
+        raw_head = body.get('head') or body.get('category')
+        from app.domain.accounts import EXPENSE_HEAD_ALIASES
+        head = EXPENSE_HEAD_ALIASES.get(raw_head, raw_head)
         if head not in EXPENSE_HEADS:
-            raise ValueError(f"unknown expense head {head} — choose from {EXPENSE_HEADS}")
+            raise ValueError(f"unknown expense head {raw_head} — choose from {EXPENSE_HEADS}")
         amount = int(e['value'])
         with tx():
             journal_id = None

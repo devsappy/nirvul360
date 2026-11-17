@@ -224,8 +224,8 @@ export function SuppliersView({ products: propsProducts, onOpenNewPurchase }: Su
       {/* View Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 gap-4 border-b border-slate-200/80">
         <div className="flex flex-col">
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Suppliers &amp; purchases</h1>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Suppliers &amp; purchases</h1>
+          <p className="text-sm text-slate-600 mt-1">
             {formatTaka(totalPayablePoisha)} payable across {suppliers.length} suppliers · ledger last synced today, 02:15
           </p>
         </div>
@@ -233,19 +233,19 @@ export function SuppliersView({ products: propsProducts, onOpenNewPurchase }: Su
         <div className="flex items-center gap-3 shrink-0">
           <button
             onClick={() => setAddSupplierModalOpen(true)}
-            className="border border-[#025033] bg-[#E6F7EF] hover:bg-[#CAE4D8] text-[#025033] px-3.5 py-2 rounded-xl text-xs font-bold shadow-2xs transition"
+            className="border border-[#025033] bg-[#E6F7EF] hover:bg-[#CAE4D8] text-[#025033] px-4 py-2 rounded-xl text-sm font-bold shadow-2xs transition"
           >
             + Add supplier
           </button>
           <button
             onClick={() => setPaymentModalOpen(true)}
-            className="border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-semibold shadow-2xs transition"
+            className="border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-xl text-sm font-semibold shadow-2xs transition"
           >
             Record payment
           </button>
           <button
             onClick={() => (onOpenNewPurchase ? onOpenNewPurchase() : purchaseFormRef.current?.scrollIntoView({ behavior: 'smooth' }))}
-            className="bg-[#062E1F] hover:bg-[#0B3B28] text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-xs transition"
+            className="bg-[#062E1F] hover:bg-[#0B3B28] text-white px-4.5 py-2 rounded-xl text-sm font-semibold shadow-xs transition"
           >
             New purchase
           </button>
@@ -257,16 +257,16 @@ export function SuppliersView({ products: propsProducts, onOpenNewPurchase }: Su
         {/* Pane 1: Suppliers Master List (~25% width / col-span-3) */}
         <div className="lg:col-span-3 flex flex-col gap-3">
           <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden flex flex-col">
-            <div className="p-3.5 border-b border-slate-100 flex items-center justify-between">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Suppliers</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                <span className="text-sm font-bold text-slate-800 uppercase tracking-wider">Suppliers</span>
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
                   {suppliers.length}
                 </span>
               </div>
               <button
                 onClick={() => setAddSupplierModalOpen(true)}
-                className="text-xs font-bold text-[#025033] hover:underline"
+                className="text-sm font-bold text-[#025033] hover:underline"
               >
                 + Add
               </button>
@@ -275,7 +275,7 @@ export function SuppliersView({ products: propsProducts, onOpenNewPurchase }: Su
             {/* Vendor Items List */}
             <div className="divide-y divide-slate-100 max-h-[500px] overflow-y-auto">
               {loading && suppliers.length === 0 ? (
-                <div className="p-6 text-center text-xs text-slate-400">Loading suppliers...</div>
+                <div className="p-6 text-center text-sm text-slate-400">Loading suppliers...</div>
               ) : (
                 suppliers.map((s) => {
                 const isSelected = s.id === selectedSupplierId;
@@ -290,14 +290,14 @@ export function SuppliersView({ products: propsProducts, onOpenNewPurchase }: Su
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className={`text-xs font-bold truncate ${isSelected ? 'text-[#025033]' : 'text-slate-900'}`}>
+                      <span className={`text-sm font-bold truncate ${isSelected ? 'text-[#025033]' : 'text-slate-900'}`}>
                         {s.name}
                       </span>
-                      <span className="text-xs font-bold text-slate-900 shrink-0 ml-2">
+                      <span className="text-sm font-bold text-slate-900 shrink-0 ml-2">
                         {formatTaka(s.payable_balance_poisha)}
                       </span>
                     </div>
-                    <span className="text-[11px] text-slate-500 leading-tight">
+                    <span className="text-xs text-slate-500 leading-normal">
                       Payable · {s.advance_balance_poisha > 0 ? `advance paid ${formatTaka(s.advance_balance_poisha)}` : 'no advance'} · {s.categories_summary || 'General fabrics'}
                     </span>
                   </button>
@@ -306,14 +306,14 @@ export function SuppliersView({ products: propsProducts, onOpenNewPurchase }: Su
             </div>
 
             {/* Bottom Dark Banner */}
-            <div className="p-3.5 bg-[#062E1F] text-white flex flex-col gap-1 text-[11px] font-semibold border-t border-[#0A3725]">
+            <div className="p-4 bg-[#062E1F] text-white flex flex-col gap-1.5 text-xs font-semibold border-t border-[#0A3725]">
               <div className="flex items-center justify-between">
                 <span className="text-[#8CAFA0]">TOTAL PAYABLE</span>
-                <span className="font-bold">{formatTaka(totalPayablePoisha)}</span>
+                <span className="font-bold text-sm">{formatTaka(totalPayablePoisha)}</span>
               </div>
-              <div className="flex items-center justify-between text-[10px] text-[#8CAFA0]">
+              <div className="flex items-center justify-between text-xs text-[#8CAFA0]">
                 <span>Advances paid out</span>
-                <span>{formatTaka(totalAdvancesPoisha)}</span>
+                <span className="font-medium">{formatTaka(totalAdvancesPoisha)}</span>
               </div>
             </div>
           </div>
@@ -346,22 +346,22 @@ export function SuppliersView({ products: propsProducts, onOpenNewPurchase }: Su
             {/* Section 1: PURCHASE BATCHES */}
             <div className="flex flex-col gap-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                   PURCHASE BATCHES
                 </span>
                 {statementLoading && (
-                  <span className="text-[10px] text-slate-400">Syncing statement...</span>
+                  <span className="text-xs text-slate-500">Syncing statement...</span>
                 )}
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+                <table className="w-full text-left text-sm">
                   <thead>
-                    <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400">
-                      <th className="py-2 px-2">BATCH</th>
-                      <th className="py-2 px-2">DATE</th>
-                      <th className="py-2 px-2">ITEMS</th>
-                      <th className="py-2 px-2 text-right">VALUE</th>
-                      <th className="py-2 px-2 text-right">STATUS</th>
+                    <tr className="border-b border-slate-200 text-xs font-bold text-slate-600">
+                      <th className="py-2.5 px-2">BATCH</th>
+                      <th className="py-2.5 px-2">DATE</th>
+                      <th className="py-2.5 px-2">ITEMS</th>
+                      <th className="py-2.5 px-2 text-right">VALUE</th>
+                      <th className="py-2.5 px-2 text-right">STATUS</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-normal">
@@ -369,9 +369,9 @@ export function SuppliersView({ products: propsProducts, onOpenNewPurchase }: Su
                       statement.batches.map((b) => (
                         <tr key={b.id} className="hover:bg-slate-50">
                           <td className="py-2.5 px-2 font-semibold text-slate-800">{b.batch_no}</td>
-                          <td className="py-2.5 px-2 text-slate-500 whitespace-nowrap">{b.purchase_date}</td>
-                          <td className="py-2.5 px-2 text-slate-600 truncate max-w-[130px]">{b.items_summary}</td>
-                          <td className="py-2.5 px-2 text-right font-semibold text-slate-900">{formatTaka(b.total_cost_poisha)}</td>
+                          <td className="py-2.5 px-2 text-slate-600 whitespace-nowrap">{b.purchase_date}</td>
+                          <td className="py-2.5 px-2 text-slate-700 truncate max-w-[130px]">{b.items_summary}</td>
+                          <td className="py-2.5 px-2 text-right font-bold text-slate-900">{formatTaka(b.total_cost_poisha)}</td>
                           <td className="py-2.5 px-2 text-right">
                             {renderBatchStatusBadge(b.status)}
                           </td>
@@ -379,7 +379,7 @@ export function SuppliersView({ products: propsProducts, onOpenNewPurchase }: Su
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={5} className="py-4 text-center text-slate-400">
+                        <td colSpan={5} className="py-4 text-center text-slate-500 text-sm">
                           No purchase batches recorded.
                         </td>
                       </tr>
@@ -391,18 +391,18 @@ export function SuppliersView({ products: propsProducts, onOpenNewPurchase }: Su
 
             {/* Section 2: PAYMENTS & RUNNING BALANCE */}
             <div className="flex flex-col gap-2.5 pt-2 border-t border-slate-100">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                 PAYMENTS &amp; RUNNING BALANCE
               </span>
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+                <table className="w-full text-left text-sm">
                   <thead>
-                    <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400">
-                      <th className="py-2 px-2">DATE</th>
-                      <th className="py-2 px-2">ENTRY</th>
-                      <th className="py-2 px-2">METHOD</th>
-                      <th className="py-2 px-2 text-right">AMOUNT</th>
-                      <th className="py-2 px-2 text-right">BALANCE</th>
+                    <tr className="border-b border-slate-200 text-xs font-bold text-slate-600">
+                      <th className="py-2.5 px-2">DATE</th>
+                      <th className="py-2.5 px-2">ENTRY</th>
+                      <th className="py-2.5 px-2">METHOD</th>
+                      <th className="py-2.5 px-2 text-right">AMOUNT</th>
+                      <th className="py-2.5 px-2 text-right">BALANCE</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-normal">
@@ -411,10 +411,10 @@ export function SuppliersView({ products: propsProducts, onOpenNewPurchase }: Su
                         const isPayment = l.amount_poisha < 0 || l.kind === 'payment';
                         return (
                           <tr key={l.id} className="hover:bg-slate-50">
-                            <td className="py-2.5 px-2 text-slate-500 whitespace-nowrap">{l.date}</td>
+                            <td className="py-2.5 px-2 text-slate-600 whitespace-nowrap">{l.date}</td>
                             <td className="py-2.5 px-2 text-slate-800 font-medium">{l.entry}</td>
-                            <td className="py-2.5 px-2 text-slate-500 capitalize">{l.method || 'bKash'}</td>
-                            <td className={`py-2.5 px-2 text-right font-semibold ${isPayment ? 'text-emerald-700' : 'text-slate-900'}`}>
+                            <td className="py-2.5 px-2 text-slate-600 capitalize">{l.method || 'bKash'}</td>
+                            <td className={`py-2.5 px-2 text-right font-bold ${isPayment ? 'text-emerald-700' : 'text-slate-900'}`}>
                               {isPayment ? `-${formatTaka(Math.abs(l.amount_poisha))}` : formatTaka(l.amount_poisha)}
                             </td>
                             <td className="py-2.5 px-2 text-right font-bold text-slate-900">
@@ -425,7 +425,7 @@ export function SuppliersView({ products: propsProducts, onOpenNewPurchase }: Su
                       })
                     ) : (
                       <tr>
-                        <td colSpan={5} className="py-4 text-center text-slate-400">
+                        <td colSpan={5} className="py-4 text-center text-slate-500 text-sm">
                           No ledger timeline records found.
                         </td>
                       </tr>
@@ -436,7 +436,7 @@ export function SuppliersView({ products: propsProducts, onOpenNewPurchase }: Su
             </div>
 
             {/* Advance Footnote */}
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 leading-relaxed flex items-center justify-between">
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed flex items-center justify-between">
               <span>
                 {statement?.advance_note || (
                   ((statement?.supplier?.advance_balance_poisha ?? selectedSupplier?.advance_balance_poisha ?? 0) > 0)
@@ -444,7 +444,7 @@ export function SuppliersView({ products: propsProducts, onOpenNewPurchase }: Su
                     : 'No unbilled advance payments pending for this vendor.'
                 )}
               </span>
-              <span className="font-bold text-slate-900 shrink-0 ml-3">
+              <span className="font-bold text-slate-900 shrink-0 ml-3 text-sm">
                 {formatTaka(selectedSupplier?.payable_balance_poisha)}
               </span>
             </div>
@@ -454,25 +454,25 @@ export function SuppliersView({ products: propsProducts, onOpenNewPurchase }: Su
         {/* Pane 3: New Purchase Form & Memo OCR Draft (~33% width / col-span-4) */}
         <div ref={purchaseFormRef} className="lg:col-span-4 flex flex-col gap-6">
           {/* Card: New purchase */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs flex flex-col gap-3.5">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs flex flex-col gap-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <span className="text-sm font-bold text-slate-900">New purchase</span>
-              <span className="text-[10px] font-semibold text-slate-500">Posts to stock on save</span>
+              <span className="text-base font-bold text-slate-900">New purchase</span>
+              <span className="text-xs font-semibold text-slate-500">Posts to stock on save</span>
             </div>
 
             {purchaseSuccess && (
-              <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
+              <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-semibold">
                 ✓ {purchaseSuccess}
               </div>
             )}
 
-            <form onSubmit={handleSavePurchase} className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-semibold text-slate-600">Supplier</label>
+            <form onSubmit={handleSavePurchase} className="flex flex-col gap-3.5">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-700">Supplier</label>
                 <select
                   value={purchaseSupplierId}
                   onChange={(e) => setPurchaseSupplierId(Number(e.target.value))}
-                  className="w-full text-xs px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-1 focus:ring-[#062E1F]"
+                  className="w-full text-sm px-3.5 py-2.5 border border-slate-200 rounded-xl bg-white text-slate-900 font-medium focus:outline-none focus:ring-1 focus:ring-[#062E1F]"
                 >
                   {suppliers.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -482,30 +482,30 @@ export function SuppliersView({ products: propsProducts, onOpenNewPurchase }: Su
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-semibold text-slate-600">Purchase date</label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-700">Purchase date</label>
                   <input
                     type="date"
                     required
                     value={purchaseDate}
                     onChange={(e) => setPurchaseDate(e.target.value)}
-                    className="w-full text-xs px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-1 focus:ring-[#062E1F]"
+                    className="w-full text-sm px-3.5 py-2.5 border border-slate-200 rounded-xl bg-white text-slate-900 font-medium focus:outline-none focus:ring-1 focus:ring-[#062E1F]"
                   />
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-semibold text-slate-600">Batch code</label>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-700">Batch code</label>
                   <input
                     type="text"
                     value={batchCode}
                     onChange={(e) => setBatchCode(e.target.value)}
-                    className="w-full text-xs px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-1 focus:ring-[#062E1F]"
+                    className="w-full text-sm px-3.5 py-2.5 border border-slate-200 rounded-xl bg-white text-slate-900 font-medium focus:outline-none focus:ring-1 focus:ring-[#062E1F]"
                   />
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-semibold text-slate-600">Product SKU</label>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-700">Product SKU</label>
                 <select
                   value={productId}
                   onChange={(e) => {
@@ -521,7 +521,7 @@ export function SuppliersView({ products: propsProducts, onOpenNewPurchase }: Su
                       }
                     }
                   }}
-                  className="w-full text-xs px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-1 focus:ring-[#062E1F]"
+                  className="w-full text-sm px-3.5 py-2.5 border border-slate-200 rounded-xl bg-white text-slate-900 font-medium focus:outline-none focus:ring-1 focus:ring-[#062E1F]"
                 >
                   {productList.length === 0 ? (
                     <option value="">No products in catalog</option>
@@ -535,51 +535,51 @@ export function SuppliersView({ products: propsProducts, onOpenNewPurchase }: Su
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-semibold text-slate-600">Quantity</label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-700">Quantity</label>
                   <input
                     type="number"
                     min="1"
                     required
                     value={qty}
                     onChange={(e) => setQty(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="w-full text-xs px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-1 focus:ring-[#062E1F]"
+                    className="w-full text-sm px-3.5 py-2.5 border border-slate-200 rounded-xl bg-white text-slate-900 font-medium focus:outline-none focus:ring-1 focus:ring-[#062E1F]"
                   />
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-semibold text-slate-600">Unit cost (৳)</label>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-700">Unit cost (৳)</label>
                   <input
                     type="number"
                     min="0"
                     required
                     value={unitCost}
                     onChange={(e) => setUnitCost(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="w-full text-xs px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-1 focus:ring-[#062E1F]"
+                    className="w-full text-sm px-3.5 py-2.5 border border-slate-200 rounded-xl bg-white text-slate-900 font-medium focus:outline-none focus:ring-1 focus:ring-[#062E1F]"
                   />
                 </div>
               </div>
 
               {/* Dynamic Batch Total */}
-              <div className="flex items-center justify-between text-xs py-1 px-3 bg-slate-50 border border-slate-200 rounded-xl">
-                <span className="text-slate-500">Batch total:</span>
-                <span className="font-bold text-slate-900">৳{calculatedBatchTotal.toLocaleString()}</span>
+              <div className="flex items-center justify-between text-sm py-2 px-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                <span className="text-slate-600 font-medium">Batch total:</span>
+                <span className="font-bold text-slate-900 text-base">৳{calculatedBatchTotal.toLocaleString()}</span>
               </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-semibold text-slate-600">Paid upfront now (৳, optional)</label>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-700">Paid upfront now (৳, optional)</label>
                 <input
                   type="number"
                   min="0"
                   placeholder="0"
                   value={paidAmount}
                   onChange={(e) => setPaidAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full text-xs px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-1 focus:ring-[#062E1F]"
+                  className="w-full text-sm px-3.5 py-2.5 border border-slate-200 rounded-xl bg-white text-slate-900 font-medium focus:outline-none focus:ring-1 focus:ring-[#062E1F]"
                 />
               </div>
 
               {/* FIFO Versioned Cost Price Note */}
-              <div className="p-2.5 rounded-xl bg-[#FAFCF9] border border-slate-200 text-[11px] text-slate-600 leading-relaxed">
+              <div className="p-3 rounded-xl bg-[#FAFCF9] border border-slate-200 text-xs text-slate-700 leading-relaxed">
                 Saving opens a new dated cost price of <strong>৳{unitCost || 0}</strong> for <strong>{productSku}</strong> from {purchaseDate}. Orders delivered before then keep <strong>৳{productPreviousCost}</strong>.
               </div>
 
@@ -594,23 +594,23 @@ export function SuppliersView({ products: propsProducts, onOpenNewPurchase }: Su
               <button
                 type="button"
                 onClick={() => memoFileInputRef.current?.click()}
-                className="w-full text-center border border-dashed border-slate-300 hover:border-[#062E1F] bg-slate-50 hover:bg-white text-slate-600 hover:text-slate-900 py-2 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5"
+                className="w-full text-center border border-dashed border-slate-300 hover:border-[#062E1F] bg-slate-50 hover:bg-white text-slate-700 hover:text-slate-900 py-2.5 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2"
               >
                 <span>📷</span>
                 <span>Upload memo photo for OCR draft</span>
               </button>
 
-              <div className="flex items-center gap-2 pt-1">
+              <div className="flex items-center gap-2.5 pt-1">
                 <button
                   type="button"
-                  className="w-1/2 border border-slate-200 hover:bg-slate-50 text-slate-700 py-2 rounded-xl text-xs font-semibold transition"
+                  className="w-1/2 border border-slate-200 hover:bg-slate-50 text-slate-700 py-2.5 rounded-xl text-sm font-semibold transition"
                 >
                   Save draft
                 </button>
                 <button
                   type="submit"
                   disabled={isSavingPurchase}
-                  className="w-1/2 bg-[#062E1F] hover:bg-[#0B3B28] text-white py-2 rounded-xl text-xs font-semibold shadow-xs transition disabled:opacity-50"
+                  className="w-1/2 bg-[#062E1F] hover:bg-[#0B3B28] text-white py-2.5 rounded-xl text-sm font-semibold shadow-xs transition disabled:opacity-50"
                 >
                   {isSavingPurchase ? 'Saving...' : 'Save purchase'}
                 </button>
@@ -622,56 +622,56 @@ export function SuppliersView({ products: propsProducts, onOpenNewPurchase }: Su
           {memoDraft && (
             <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-slate-900">Memo photo — draft</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                <span className="text-base font-bold text-slate-900">Memo photo — draft</span>
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
                   Nothing saved yet
                 </span>
               </div>
 
               {/* Thumbnail representation */}
-              <div className="flex items-center gap-3 p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
-                <div className="w-10 h-10 rounded-lg bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold shrink-0">
+              <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                <div className="w-10 h-10 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center text-sm font-bold shrink-0">
                   📄
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-semibold text-slate-800 truncate">{memoDraft.fileName}</span>
-                  <span className="text-[11px] text-slate-500">Scanned memo image</span>
+                  <span className="text-sm font-semibold text-slate-800 truncate">{memoDraft.fileName}</span>
+                  <span className="text-xs text-slate-600">Scanned memo image</span>
                 </div>
               </div>
 
               {/* WHAT WE READ */}
-              <div className="flex flex-col gap-1.5 pt-1 text-xs">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">WHAT WE READ</span>
-                <div className="flex justify-between py-0.5 border-b border-slate-100">
-                  <span className="text-slate-500">Supplier:</span>
+              <div className="flex flex-col gap-2 pt-1 text-sm">
+                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">WHAT WE READ</span>
+                <div className="flex justify-between py-1 border-b border-slate-100">
+                  <span className="text-slate-600">Supplier:</span>
                   <span className="font-semibold text-slate-800">{memoDraft.supplier_name}</span>
                 </div>
-                <div className="flex justify-between py-0.5 border-b border-slate-100">
-                  <span className="text-slate-500">Date:</span>
+                <div className="flex justify-between py-1 border-b border-slate-100">
+                  <span className="text-slate-600">Date:</span>
                   <span className="font-semibold text-slate-800">{memoDraft.date}</span>
                 </div>
-                <div className="flex justify-between py-0.5 border-b border-slate-100">
-                  <span className="text-slate-500">Item:</span>
+                <div className="flex justify-between py-1 border-b border-slate-100">
+                  <span className="text-slate-600">Item:</span>
                   <span className="font-semibold text-slate-800">{memoDraft.item_name}</span>
                 </div>
-                <div className="flex justify-between py-0.5 border-b border-slate-100">
-                  <span className="text-slate-500">Unit cost:</span>
+                <div className="flex justify-between py-1 border-b border-slate-100">
+                  <span className="text-slate-600">Unit cost:</span>
                   <span className="font-semibold text-slate-800">৳{memoDraft.unit_cost_taka}</span>
                 </div>
-                <div className="flex justify-between py-0.5">
-                  <span className="text-slate-500">Total:</span>
+                <div className="flex justify-between py-1">
+                  <span className="text-slate-600">Total:</span>
                   <span className="font-bold text-slate-900">৳{memoDraft.total_cost_taka?.toLocaleString()}</span>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px] text-slate-500">
-                <span className="leading-tight">
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs text-slate-600">
+                <span className="leading-normal">
                   Check every line. The draft is filled in on the left, and nothing reaches the ledger until you press Save purchase.
                 </span>
                 <button
                   type="button"
                   onClick={() => setMemoDraft(null)}
-                  className="text-xs font-semibold text-red-700 hover:underline ml-2 shrink-0"
+                  className="text-xs font-bold text-red-700 hover:underline ml-3 shrink-0"
                 >
                   Discard
                 </button>
@@ -859,10 +859,10 @@ export function SuppliersView({ products: propsProducts, onOpenNewPurchase }: Su
 function renderBatchStatusBadge(status: string) {
   const s = status?.toLowerCase() || '';
   if (s === 'paid') {
-    return <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">Paid</span>;
+    return <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">Paid</span>;
   }
   if (s === 'part_paid') {
-    return <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">Part paid</span>;
+    return <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">Part paid</span>;
   }
-  return <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-800 border border-rose-200">Unpaid</span>;
+  return <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200">Unpaid</span>;
 }

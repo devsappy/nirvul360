@@ -237,7 +237,7 @@ export function ReportsView({ userRole, showToast }: ReportsViewProps) {
             key={tab.key}
             type="button"
             onClick={() => setActiveSubTab(tab.key as any)}
-            className={`px-4 py-2 text-xs font-semibold rounded-xl transition-all ${
+            className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
               activeSubTab === tab.key
                 ? 'bg-[#064E3B] text-white shadow-2xs'
                 : 'bg-white text-[#4B5563] border border-[#E5EAE7] hover:bg-[#F9FAF8]'
@@ -274,15 +274,15 @@ export function ReportsView({ userRole, showToast }: ReportsViewProps) {
                     placeholder="Search by model or product..."
                     value={productSearch}
                     onChange={(e) => setProductSearch(e.target.value)}
-                    className="w-full text-xs px-3 py-1.5 border border-[#CAE4D8] rounded-xl bg-white focus:outline-none focus:ring-1 focus:ring-[#025033] placeholder-[#3A8067] text-[#025033]"
+                    className="w-full text-sm px-3.5 py-2 border border-[#CAE4D8] rounded-xl bg-white focus:outline-none focus:ring-1 focus:ring-[#025033] placeholder-[#3A8067] text-[#025033]"
                   />
                 </div>
               </div>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#FAFCF9] text-[10px] font-extrabold text-[#3A8067] uppercase tracking-wider border-b border-[#E5EAE7]">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-[#FAFCF9] text-xs font-bold text-slate-600 uppercase tracking-wider border-b border-[#E5EAE7]">
                   <tr>
                     <th scope="col" className="px-4 py-3 w-8">
                       <input
@@ -588,7 +588,7 @@ export function ReportsView({ userRole, showToast }: ReportsViewProps) {
               {/* 5 Top Summary Visual KPI Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 {/* 1. Gross Sales */}
-                <div className="p-4.5 rounded-2xl bg-white border border-[#E5EAE7] shadow-2xs flex flex-col justify-between">
+                <div className="p-5 rounded-2xl bg-white border border-[#E5EAE7] shadow-2xs flex flex-col justify-between">
                   <span className="text-xs font-bold uppercase tracking-wider text-[#3A8067]">Delivered Sales</span>
                   <div className="my-2">
                     <div className="text-xl sm:text-2xl font-black text-[#025033] tracking-tight">
@@ -601,7 +601,7 @@ export function ReportsView({ userRole, showToast }: ReportsViewProps) {
                 </div>
 
                 {/* 2. COGS */}
-                <div className="p-4.5 rounded-2xl bg-white border border-[#E5EAE7] shadow-2xs flex flex-col justify-between">
+                <div className="p-5 rounded-2xl bg-white border border-[#E5EAE7] shadow-2xs flex flex-col justify-between">
                   <span className="text-xs font-bold uppercase tracking-wider text-[#3A8067]">Cost of Goods (COGS)</span>
                   <div className="my-2">
                     <div className="text-xl sm:text-2xl font-black text-red-700 tracking-tight">
@@ -614,7 +614,7 @@ export function ReportsView({ userRole, showToast }: ReportsViewProps) {
                 </div>
 
                 {/* 3. Gross Profit */}
-                <div className="p-4.5 rounded-2xl bg-[#E6F7EF] border border-[#CAE4D8] shadow-2xs flex flex-col justify-between">
+                <div className="p-5 rounded-2xl bg-[#E6F7EF] border border-[#CAE4D8] shadow-2xs flex flex-col justify-between">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold uppercase tracking-wider text-[#025033]">Gross Profit</span>
                     <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#025033] text-white">
@@ -632,7 +632,7 @@ export function ReportsView({ userRole, showToast }: ReportsViewProps) {
                 </div>
 
                 {/* 4. Total Operating Expenses */}
-                <div className="p-4.5 rounded-2xl bg-white border border-[#E5EAE7] shadow-2xs flex flex-col justify-between">
+                <div className="p-5 rounded-2xl bg-white border border-[#E5EAE7] shadow-2xs flex flex-col justify-between">
                   <span className="text-xs font-bold uppercase tracking-wider text-[#3A8067]">Operating Expenses</span>
                   <div className="my-2">
                     <div className="text-xl sm:text-2xl font-black text-[#111827] tracking-tight">
@@ -647,7 +647,7 @@ export function ReportsView({ userRole, showToast }: ReportsViewProps) {
                 </div>
 
                 {/* 5. Net Profit */}
-                <div className={`p-4.5 rounded-2xl text-white shadow-2xs flex flex-col justify-between ${
+                <div className={`p-5 rounded-2xl text-white shadow-2xs flex flex-col justify-between ${
                   (pnlData.net_profit || 0) < 0 ? 'bg-red-800 border border-red-900' : 'bg-[#025033] border border-[#00432C]'
                 }`}>
                   <div className="flex items-center justify-between">

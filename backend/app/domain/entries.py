@@ -5,7 +5,7 @@ transfers, supplier purchases (moving average cost), and supplier payments.
 from typing import Dict, Any, Optional, List
 from app.db.session import insert, one, all, tx
 from app.lib.dates import now_iso, today, is_iso_date
-from app.domain.accounts import ACCOUNTS, EXPENSE_HEADS
+from app.domain.accounts import ACCOUNTS, EXPENSE_HEADS, EXPENSE_HEAD_ALIASES
 from app.domain.ledger import post
 from app.domain.merchants import resolve_cash_account
 from app.domain.products import get_product, cost_at, stock_qty, set_price
@@ -21,11 +21,12 @@ def _positive(amount: int, what: str = 'amount'):
         raise ValueError(f"{what} must be an integer greater than zero")
 
 def record_expense(merchant_id: int, data: Dict[str, Any], ctx: Dict[str, Any]) -> int:
-    head = data['head']
-    if head not in EXPENSE_HEADS:
-        raise ValueError(f"unknown expense head {head}")
+    raw_head = data.get('head') or data.get('expense_head') or 'other_expense'
+    head = EXPENSE_HEAD_ALIASES.get(raw_head, raw_head)
+    if head not in EXPENSE_HEADS and head not in ACCOUNTS:
+        raise ValueError(f"unknown expense head {raw_head}")
     if head == 'ad_spend':
-        return record_ad_spend(merchant_id, {**data, 'currency': 'BDT'}, ctx)
+        return record_ad_spend(merchant_id, {**data, 'head': 'ad_spend', 'currency': 'BDT'}, ctx)
 
     amount = data['amount']
     _positive(amount)

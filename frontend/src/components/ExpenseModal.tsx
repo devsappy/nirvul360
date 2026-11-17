@@ -76,6 +76,7 @@ export function ExpenseModal({ isOpen, onClose, onSuccess }: ExpenseModalProps) 
               className="w-full bg-[#FAFCF9] border border-[#E5EAE7] rounded-xl px-3 py-2 text-xs font-medium text-[#025033] focus:outline-none focus:border-[#025033]"
             >
               <option value="packaging">Packaging &amp; Poly Bags</option>
+              <option value="courier">Courier Charges &amp; Delivery</option>
               <option value="salary">Staff Salary &amp; Wages</option>
               <option value="rent">Office / Showroom Rent</option>
               <option value="utilities">Utilities &amp; Electric Bills</option>

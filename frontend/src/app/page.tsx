@@ -147,11 +147,17 @@ export default function Home() {
           }
         } else {
           router.replace('/login');
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login';
+          }
         }
       })
       .catch(() => {
         if (!mounted) return;
         router.replace('/login');
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
       });
 
     return () => {

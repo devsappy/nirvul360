@@ -106,6 +106,7 @@ export function ExpensesView({ currentUser, onNavigate, onOpenAddExpenseModal }:
   const [formDate, setFormDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [formDescription, setFormDescription] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
+  const [formError, setFormError] = useState('');
   const formRef = useRef<HTMLDivElement>(null);
 
   // Fixed Cost Prorated State (PDF Requirement 9)
@@ -142,6 +143,7 @@ export function ExpensesView({ currentUser, onNavigate, onOpenAddExpenseModal }:
 
     setIsSubmitting(true);
     setFormSuccess('');
+    setFormError('');
     try {
       if (formHead === 'owner_withdrawal') {
         await apiExpenses.createWithdrawal({
@@ -150,8 +152,15 @@ export function ExpensesView({ currentUser, onNavigate, onOpenAddExpenseModal }:
           note: formDescription,
         });
       } else {
+        const headMapping: Record<string, string> = {
+          courier: 'courier_delivery',
+          advertising: 'ad_spend',
+          fixed_cost: 'other_expense',
+          internet: 'utilities',
+        };
+        const targetHead = headMapping[formHead] || formHead;
         await apiExpenses.createExpense({
-          head: formHead,
+          head: targetHead,
           amount: amountNum,
           date: formDate,
           note: formDescription,
@@ -163,7 +172,9 @@ export function ExpensesView({ currentUser, onNavigate, onOpenAddExpenseModal }:
       setTimeout(() => setFormSuccess(''), 3000);
       await loadData();
     } catch (err: any) {
-      alert(err.message || 'Failed to save expense');
+      const msg = err.message || 'Failed to save expense';
+      setFormError(msg);
+      alert(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -245,7 +256,7 @@ export function ExpensesView({ currentUser, onNavigate, onOpenAddExpenseModal }:
           <div className="inline-flex items-center p-1 rounded-xl bg-white border border-[#E5EAE7] shadow-2xs gap-0.5">
             <button
               onClick={() => setPeriod('this_month')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs transition ${
+              className={`px-3.5 py-1.5 rounded-lg text-sm transition ${
                 period === 'this_month'
                   ? 'bg-[#025033] text-white font-medium shadow-xs'
                   : 'text-[#374151] hover:text-[#111827] font-medium'
@@ -255,7 +266,7 @@ export function ExpensesView({ currentUser, onNavigate, onOpenAddExpenseModal }:
             </button>
             <button
               onClick={() => setPeriod('quarter')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs transition ${
+              className={`px-3.5 py-1.5 rounded-lg text-sm transition ${
                 period === 'quarter'
                   ? 'bg-[#025033] text-white font-medium shadow-xs'
                   : 'text-[#374151] hover:text-[#111827] font-medium'
@@ -265,7 +276,7 @@ export function ExpensesView({ currentUser, onNavigate, onOpenAddExpenseModal }:
             </button>
             <button
               onClick={() => setPeriod('year')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs transition ${
+              className={`px-3.5 py-1.5 rounded-lg text-sm transition ${
                 period === 'year'
                   ? 'bg-[#025033] text-white font-medium shadow-xs'
                   : 'text-[#374151] hover:text-[#111827] font-medium'
@@ -277,13 +288,13 @@ export function ExpensesView({ currentUser, onNavigate, onOpenAddExpenseModal }:
 
           <button
             onClick={() => setRecurringModalOpen(true)}
-            className="bg-white hover:bg-[#F9FAFB] border border-[#E5EAE7] text-[#111827] text-xs font-medium px-4 py-2 rounded-xl shadow-2xs transition"
+            className="bg-white hover:bg-[#F9FAFB] border border-[#E5EAE7] text-[#111827] text-sm font-semibold px-4 py-2 rounded-xl shadow-2xs transition"
           >
             Expense heads
           </button>
           <button
             onClick={scrollToForm}
-            className="bg-[#025033] hover:bg-[#033F28] text-white text-xs font-medium px-4 py-2 rounded-xl shadow-2xs transition"
+            className="bg-[#025033] hover:bg-[#033F28] text-white text-sm font-semibold px-4 py-2 rounded-xl shadow-2xs transition"
           >
             Add expense
           </button>
@@ -448,9 +459,9 @@ export function ExpensesView({ currentUser, onNavigate, onOpenAddExpenseModal }:
 
             {/* Table */}
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-[#F3F4F6] text-[#6B7280] font-semibold text-[10px] tracking-wider">
+                  <tr className="border-b border-[#F3F4F6] text-slate-600 font-bold text-xs tracking-wider">
                     <th className="py-2.5 px-3">DATE</th>
                     <th className="py-2.5 px-3">HEAD</th>
                     <th className="py-2.5 px-3">DESCRIPTION</th>
@@ -631,6 +642,12 @@ export function ExpensesView({ currentUser, onNavigate, onOpenAddExpenseModal }:
             {formSuccess && (
               <div className="p-2.5 rounded-xl bg-[#E6F7EF] border border-[#CAE4D8] text-[#025033] text-xs font-semibold">
                 ✓ {formSuccess}
+              </div>
+            )}
+
+            {formError && (
+              <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">
+                ✕ {formError}
               </div>
             )}
 

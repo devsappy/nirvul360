@@ -225,11 +225,17 @@ def run(sql: str, *params):
                 return list(row.values())[0] if isinstance(row, dict) else row[0]
         return cur
 
-def _normalise(v: Any) -> Any:
+KNOWN_BOOLEAN_COLS = {
+    'active', 'is_active', 'is_owner_withdrawal', 'is_cleared', 'reconciled',
+    'delivered', 'returned', 'in_transit', 'paid', 'enabled', 'resolved'
+}
+
+def _normalise(k: str, v: Any) -> Any:
     if v is None:
         return None
-    if isinstance(v, bool):
-        return v if _is_postgres else (1 if v else 0)
+    if k in KNOWN_BOOLEAN_COLS or isinstance(v, bool):
+        b = bool(v)
+        return b if _is_postgres else (1 if b else 0)
     if isinstance(v, (dict, list)):
         return json.dumps(v)
     return v
@@ -237,7 +243,7 @@ def _normalise(v: Any) -> Any:
 def insert(table: str, row: Dict[str, Any]) -> int:
     conn = get_db()
     keys = [k for k, v in row.items() if v is not None]
-    vals = [_normalise(row[k]) for k in keys]
+    vals = [_normalise(k, row[k]) for k in keys]
     
     if _is_postgres:
         placeholders = ", ".join(["%s"] * len(keys))
@@ -277,7 +283,7 @@ def update(table: str, row_id: int, changes: Dict[str, Any]):
     keys = [k for k, v in changes.items() if v is not None]
     if not keys:
         return
-    vals = [_normalise(changes[k]) for k in keys]
+    vals = [_normalise(k, changes[k]) for k in keys]
     
     if _is_postgres:
         set_clause = ", ".join([f"{k} = %s" for k in keys])

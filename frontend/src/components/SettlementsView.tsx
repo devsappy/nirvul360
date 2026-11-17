@@ -311,9 +311,9 @@ export function SettlementsView({ onRefreshParent, showToast }: SettlementsViewP
               </span>
             </div>
 
-            <div className="border border-[#E5EAE7] rounded-xl overflow-hidden text-xs">
+            <div className="border border-[#E5EAE7] rounded-xl overflow-hidden text-sm">
               <table className="w-full text-left">
-                <thead className="bg-[#FAFCF9] text-[10px] font-semibold text-[#6B7280] uppercase tracking-wider border-b border-[#E5EAE7]">
+                <thead className="bg-[#FAFCF9] text-xs font-bold text-slate-600 uppercase tracking-wider border-b border-[#E5EAE7]">
                   <tr>
                     <th className="px-3.5 py-2">THEIR COLUMN</th>
                     <th className="px-3.5 py-2">OUR FIELD</th>
@@ -330,7 +330,7 @@ export function SettlementsView({ onRefreshParent, showToast }: SettlementsViewP
                             const val = e.target.value;
                             setColumnMappings(prev => ({ ...prev, [theirCol]: val }));
                           }}
-                          className={`w-full px-2 py-1 text-xs rounded-lg border bg-white focus:outline-none focus:ring-1 focus:ring-[#025033] ${
+                          className={`w-full px-2 py-1 text-sm rounded-lg border bg-white focus:outline-none focus:ring-1 focus:ring-[#025033] ${
                             ourField === 'unmapped'
                               ? 'border-amber-300 bg-amber-50/50 text-[#92400E]'
                               : 'border-[#D1D5DB] text-[#111827]'
@@ -351,7 +351,7 @@ export function SettlementsView({ onRefreshParent, showToast }: SettlementsViewP
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
-              <div className="text-[11px] text-[#6B7280]">
+              <div className="text-xs text-slate-600">
                 {unmappedColumnsCount > 0 ? `${unmappedColumnsCount} column still unmapped. ` : ''}
                 Return charge is kept as its own field — it is never merged into delivery charge.
               </div>
@@ -359,7 +359,7 @@ export function SettlementsView({ onRefreshParent, showToast }: SettlementsViewP
                 type="button"
                 disabled={isCommitting}
                 onClick={handleConfirmMapping}
-                className="px-4 py-2 text-xs font-semibold text-white bg-[#025033] hover:bg-[#033E28] rounded-xl transition-colors disabled:opacity-50 shadow-2xs whitespace-nowrap self-end sm:self-auto"
+                className="px-4 py-2 text-sm font-semibold text-white bg-[#025033] hover:bg-[#033E28] rounded-xl transition-colors disabled:opacity-50 shadow-2xs whitespace-nowrap self-end sm:self-auto"
               >
                 {isCommitting ? 'Posting to ledger...' : 'Confirm mapping'}
               </button>
@@ -375,12 +375,12 @@ export function SettlementsView({ onRefreshParent, showToast }: SettlementsViewP
           <div className="flex items-center justify-between pb-2 border-b border-[#E5EAE7]">
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-sm text-[#111827]">Matched</h3>
-                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[#DCFCE7] text-[#15803D]">
+                <h3 className="font-bold text-base text-[#111827]">Matched</h3>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#DCFCE7] text-[#15803D]">
                   {matchedRows.length}
                 </span>
               </div>
-              <p className="text-[11px] text-[#6B7280] mt-0.5">
+              <p className="text-xs text-slate-600 mt-0.5">
                 {matchedRows.length} rows · ৳{formatTaka(matchedTotalPoisha / 100)} will clear from held at couriers
               </p>
             </div>
@@ -388,26 +388,26 @@ export function SettlementsView({ onRefreshParent, showToast }: SettlementsViewP
 
           <div className="overflow-x-auto max-h-80 overflow-y-auto">
             {matchedRows.length === 0 ? (
-              <div className="py-12 text-center text-xs text-[#6B7280]">
+              <div className="py-12 text-center text-sm text-slate-500">
                 No matched rows to display. Upload a settlement sheet to reconcile.
               </div>
             ) : (
-              <table className="w-full text-left text-xs">
-                <thead className="text-[10px] text-[#6B7280] font-semibold uppercase bg-[#FAFCF9] border-b border-[#E5EAE7]">
+              <table className="w-full text-left text-sm">
+                <thead className="text-xs text-slate-600 font-bold uppercase bg-[#FAFCF9] border-b border-[#E5EAE7]">
                   <tr>
-                    <th className="py-2 px-1">ORDER ID</th>
-                    <th className="py-2 px-1">CUSTOMER</th>
-                    <th className="py-2 px-1 text-right">COD</th>
-                    <th className="py-2 px-1 text-right">CHARGES</th>
+                    <th className="py-2.5 px-2">ORDER ID</th>
+                    <th className="py-2.5 px-2">CUSTOMER</th>
+                    <th className="py-2.5 px-2 text-right">COD</th>
+                    <th className="py-2.5 px-2 text-right">CHARGES</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E5EAE7]">
                   {matchedRows.slice(0, 15).map((row, idx) => (
                     <tr key={idx} className="hover:bg-[#FAFCF9]">
-                      <td className="py-2 px-1 font-mono font-medium text-[#025033]">{row.consignment_id}</td>
-                      <td className="py-2 px-1 text-[#4B5563]">{row.customer_name || 'Customer'}</td>
-                      <td className="py-2 px-1 text-right font-semibold text-[#111827]">৳{formatTaka(row.cod_collected / 100)}</td>
-                      <td className="py-2 px-1 text-right text-[#DC2626]">
+                      <td className="py-2.5 px-2 font-mono font-medium text-[#025033]">{row.consignment_id}</td>
+                      <td className="py-2.5 px-2 text-[#4B5563]">{row.customer_name || 'Customer'}</td>
+                      <td className="py-2.5 px-2 text-right font-semibold text-[#111827]">৳{formatTaka(row.cod_collected / 100)}</td>
+                      <td className="py-2.5 px-2 text-right text-[#DC2626]">
                         {row.charges ? `-৳${formatTaka(row.charges / 100)}` : '-৳95'}
                       </td>
                     </tr>
@@ -417,7 +417,7 @@ export function SettlementsView({ onRefreshParent, showToast }: SettlementsViewP
             )}
           </div>
 
-          <div className="pt-2 border-t border-[#E5EAE7] text-[11px] text-[#6B7280]">
+          <div className="pt-2 border-t border-[#E5EAE7] text-xs text-slate-600">
             Posting these clears ৳{formatTaka(matchedTotalPoisha / 100)} out of held at couriers and into cash.
           </div>
         </div>
@@ -427,12 +427,12 @@ export function SettlementsView({ onRefreshParent, showToast }: SettlementsViewP
           <div className="flex items-center justify-between pb-2 border-b border-[#E5EAE7]">
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-sm text-[#111827]">Did not match</h3>
-                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[#FEF3C7] text-[#D97706]">
+                <h3 className="font-bold text-base text-[#111827]">Did not match</h3>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#FEF3C7] text-[#D97706]">
                   {disputedRows.length}
                 </span>
               </div>
-              <p className="text-[11px] text-[#6B7280] mt-0.5">
+              <p className="text-xs text-slate-600 mt-0.5">
                 {disputedRows.length} rows · ৳{formatTaka(disputedTotalPoisha / 100)} held back from profit
               </p>
             </div>
@@ -440,17 +440,17 @@ export function SettlementsView({ onRefreshParent, showToast }: SettlementsViewP
 
           <div className="overflow-x-auto max-h-80 overflow-y-auto">
             {disputedRows.length === 0 ? (
-              <div className="py-12 text-center text-xs text-[#6B7280]">
+              <div className="py-12 text-center text-sm text-slate-500">
                 All rows matched. No disputed items in this upload.
               </div>
             ) : (
-              <table className="w-full text-left text-xs">
-                <thead className="text-[10px] text-[#6B7280] font-semibold uppercase bg-[#FAFCF9] border-b border-[#E5EAE7]">
+              <table className="w-full text-left text-sm">
+                <thead className="text-xs text-slate-600 font-bold uppercase bg-[#FAFCF9] border-b border-[#E5EAE7]">
                   <tr>
-                    <th className="py-2 px-1">THEIR ID</th>
-                    <th className="py-2 px-1">WHY</th>
-                    <th className="py-2 px-1 text-right">AMOUNT</th>
-                    <th className="py-2 px-1 text-right">ACTION</th>
+                    <th className="py-2.5 px-2">THEIR ID</th>
+                    <th className="py-2.5 px-2">WHY</th>
+                    <th className="py-2.5 px-2 text-right">AMOUNT</th>
+                    <th className="py-2.5 px-2 text-right">ACTION</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E5EAE7]">
@@ -502,7 +502,7 @@ export function SettlementsView({ onRefreshParent, showToast }: SettlementsViewP
             )}
           </div>
 
-          <div className="p-2.5 bg-[#FFFBEB] rounded-xl border border-[#FDE68A] text-[11px] text-[#92400E]">
+          <div className="p-3 bg-[#FFFBEB] rounded-xl border border-[#FDE68A] text-xs font-medium text-[#92400E]">
             These {disputedRows.length} rows stay in Needs attention and out of profit until each one is given a reason.
           </div>
         </div>
@@ -510,36 +510,36 @@ export function SettlementsView({ onRefreshParent, showToast }: SettlementsViewP
         {/* Column 3 (~30% width: 4 of 12 columns on lg): Outstanding by courier Summary Card */}
         <div className="lg:col-span-4 bg-white rounded-2xl border border-[#E5EAE7] shadow-2xs p-5 space-y-4">
           <div className="flex items-center justify-between pb-2 border-b border-[#E5EAE7]">
-            <h3 className="font-bold text-sm text-[#111827]">Outstanding by courier</h3>
-            <span className="text-xs text-[#6B7280]">
+            <h3 className="font-bold text-base text-[#111827]">Outstanding by courier</h3>
+            <span className="text-xs text-slate-600 font-medium">
               Synced {recSummary?.last_synced_at ? new Date(recSummary.last_synced_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '—'}
             </span>
           </div>
 
           {/* Table 1: Receivables by Courier */}
-          <div className="overflow-x-auto text-xs">
+          <div className="overflow-x-auto text-sm">
             <table className="w-full text-left">
-              <thead className="text-[10px] text-[#6B7280] font-semibold uppercase bg-[#FAFCF9] border-b border-[#E5EAE7]">
+              <thead className="text-xs text-slate-600 font-bold uppercase bg-[#FAFCF9] border-b border-[#E5EAE7]">
                 <tr>
-                  <th className="py-2 px-1">COURIER</th>
-                  <th className="py-2 px-1 text-center">PARCELS</th>
-                  <th className="py-2 px-1 text-right">HELD</th>
+                  <th className="py-2.5 px-2">COURIER</th>
+                  <th className="py-2.5 px-2 text-center">PARCELS</th>
+                  <th className="py-2.5 px-2 text-right">HELD</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E5EAE7]">
                 {(recSummary?.outstanding_by_courier || []).map((c) => (
                   <tr key={c.courier} className="hover:bg-[#FAFCF9]">
-                    <td className="py-2 px-1 font-medium text-[#111827]">{c.name}</td>
-                    <td className="py-2 px-1 text-center text-[#4B5563]">{c.parcels}</td>
-                    <td className="py-2 px-1 text-right font-semibold text-[#111827]">৳{formatTaka(c.held_taka)}</td>
+                    <td className="py-2.5 px-2 font-medium text-[#111827]">{c.name}</td>
+                    <td className="py-2.5 px-2 text-center text-[#4B5563]">{c.parcels}</td>
+                    <td className="py-2.5 px-2 text-right font-bold text-[#111827]">৳{formatTaka(c.held_taka)}</td>
                   </tr>
                 ))}
                 <tr className="bg-[#E6F7EF]/50 font-bold text-[#025033]">
-                  <td className="py-2 px-1">Total held</td>
-                  <td className="py-2 px-1 text-center">
+                  <td className="py-2.5 px-2">Total held</td>
+                  <td className="py-2.5 px-2 text-center">
                     {(recSummary?.outstanding_by_courier || []).reduce((sum, c) => sum + c.parcels, 0)}
                   </td>
-                  <td className="py-2 px-1 text-right">৳{formatTaka(recSummary?.total_held_taka)}</td>
+                  <td className="py-2.5 px-2 text-right font-extrabold text-[#025033]">৳{formatTaka(recSummary?.total_held_taka)}</td>
                 </tr>
               </tbody>
             </table>
@@ -547,43 +547,43 @@ export function SettlementsView({ onRefreshParent, showToast }: SettlementsViewP
 
           {/* Table 2: Charges This Period Kept Apart */}
           <div className="pt-2 border-t border-[#E5EAE7] space-y-2">
-            <div className="text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
+            <div className="text-xs font-bold text-slate-600 uppercase tracking-wider">
               CHARGES THIS PERIOD, KEPT APART
             </div>
-            <div className="overflow-x-auto text-xs">
+            <div className="overflow-x-auto text-sm">
               <table className="w-full text-left">
-                <thead className="text-[10px] text-[#6B7280] font-semibold uppercase bg-[#FAFCF9] border-b border-[#E5EAE7]">
+                <thead className="text-xs text-slate-600 font-bold uppercase bg-[#FAFCF9] border-b border-[#E5EAE7]">
                   <tr>
-                    <th className="py-1.5 px-1">CHARGE</th>
-                    <th className="py-1.5 px-1 text-right">PATHAO</th>
-                    <th className="py-1.5 px-1 text-right">STEADFAST</th>
-                    <th className="py-1.5 px-1 text-right">REDX</th>
+                    <th className="py-2 px-2">CHARGE</th>
+                    <th className="py-2 px-2 text-right">PATHAO</th>
+                    <th className="py-2 px-2 text-right">STEADFAST</th>
+                    <th className="py-2 px-2 text-right">REDX</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E5EAE7]">
                   <tr>
-                    <td className="py-1.5 px-1 text-[#4B5563]">Delivery</td>
-                    <td className="py-1.5 px-1 text-right">৳{formatTaka((recSummary?.charges_this_period?.delivery?.['pathao'] ?? 0) / 100)}</td>
-                    <td className="py-1.5 px-1 text-right">৳{formatTaka((recSummary?.charges_this_period?.delivery?.['steadfast'] ?? 0) / 100)}</td>
-                    <td className="py-1.5 px-1 text-right">৳{formatTaka((recSummary?.charges_this_period?.delivery?.['redx'] ?? 0) / 100)}</td>
+                    <td className="py-2 px-2 text-[#4B5563]">Delivery</td>
+                    <td className="py-2 px-2 text-right font-semibold">৳{formatTaka((recSummary?.charges_this_period?.delivery?.['pathao'] ?? 0) / 100)}</td>
+                    <td className="py-2 px-2 text-right font-semibold">৳{formatTaka((recSummary?.charges_this_period?.delivery?.['steadfast'] ?? 0) / 100)}</td>
+                    <td className="py-2 px-2 text-right font-semibold">৳{formatTaka((recSummary?.charges_this_period?.delivery?.['redx'] ?? 0) / 100)}</td>
                   </tr>
                   <tr>
-                    <td className="py-1.5 px-1 text-[#4B5563]">COD fee</td>
-                    <td className="py-1.5 px-1 text-right">৳{formatTaka((recSummary?.charges_this_period?.cod_fee?.['pathao'] ?? 0) / 100)}</td>
-                    <td className="py-1.5 px-1 text-right">৳{formatTaka((recSummary?.charges_this_period?.cod_fee?.['steadfast'] ?? 0) / 100)}</td>
-                    <td className="py-1.5 px-1 text-right">৳{formatTaka((recSummary?.charges_this_period?.cod_fee?.['redx'] ?? 0) / 100)}</td>
+                    <td className="py-2 px-2 text-[#4B5563]">COD fee</td>
+                    <td className="py-2 px-2 text-right font-semibold">৳{formatTaka((recSummary?.charges_this_period?.cod_fee?.['pathao'] ?? 0) / 100)}</td>
+                    <td className="py-2 px-2 text-right font-semibold">৳{formatTaka((recSummary?.charges_this_period?.cod_fee?.['steadfast'] ?? 0) / 100)}</td>
+                    <td className="py-2 px-2 text-right font-semibold">৳{formatTaka((recSummary?.charges_this_period?.cod_fee?.['redx'] ?? 0) / 100)}</td>
                   </tr>
                   <tr>
-                    <td className="py-1.5 px-1 text-[#4B5563]">Return charge</td>
-                    <td className="py-1.5 px-1 text-right">৳{formatTaka((recSummary?.charges_this_period?.return_charge?.['pathao'] ?? 0) / 100)}</td>
-                    <td className="py-1.5 px-1 text-right">৳{formatTaka((recSummary?.charges_this_period?.return_charge?.['steadfast'] ?? 0) / 100)}</td>
-                    <td className="py-1.5 px-1 text-right">৳{formatTaka((recSummary?.charges_this_period?.return_charge?.['redx'] ?? 0) / 100)}</td>
+                    <td className="py-2 px-2 text-[#4B5563]">Return charge</td>
+                    <td className="py-2 px-2 text-right font-semibold text-rose-700">৳{formatTaka((recSummary?.charges_this_period?.return_charge?.['pathao'] ?? 0) / 100)}</td>
+                    <td className="py-2 px-2 text-right font-semibold text-rose-700">৳{formatTaka((recSummary?.charges_this_period?.return_charge?.['steadfast'] ?? 0) / 100)}</td>
+                    <td className="py-2 px-2 text-right font-semibold text-rose-700">৳{formatTaka((recSummary?.charges_this_period?.return_charge?.['redx'] ?? 0) / 100)}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
-            <div className="text-[11px] text-[#6B7280] leading-snug">
+            <div className="text-xs text-slate-600 leading-relaxed">
               Return charges on {recSummary?.returned_parcels_count ?? 0} returned parcels are shown on their own line and never folded into delivery.
             </div>
           </div>

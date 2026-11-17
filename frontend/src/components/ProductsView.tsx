@@ -530,9 +530,9 @@ export function ProductsView({
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400">
+              <tr className="border-b border-slate-200 text-xs font-bold text-slate-600">
                 <th className="py-2.5 px-3 w-8">
                   <input
                     type="checkbox"

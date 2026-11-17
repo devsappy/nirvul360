@@ -25,7 +25,8 @@ ACCOUNTS = {
     'sales_discounts':     {'type': 'revenue',   'pl': 'returns',     'label': 'Discounts given at the door'},
     'sales_held':          {'type': 'revenue',   'pl': 'held',        'label': 'Held for review (exception queue)'},
     'cogs':                {'type': 'expense',   'pl': 'cogs',      'label': 'Cost of goods sold'},
-    'courier_delivery':    {'type': 'expense',   'pl': 'courier',   'label': 'Delivery charges'},
+    'courier':             {'type': 'expense',   'pl': 'courier',   'label': 'Courier charges'},
+    'courier_delivery':    {'type': 'expense',   'pl': 'courier',   'label': 'Courier delivery charges'},
     'courier_cod_fee':     {'type': 'expense',   'pl': 'courier',   'label': 'COD fees'},
     'courier_return_fee':  {'type': 'expense',   'pl': 'courier',   'label': 'Return charges'},
     'courier_recovery':    {'type': 'expense',   'pl': 'courier',   'label': 'Delivery advance kept on returns'},
@@ -42,8 +43,18 @@ ACCOUNTS = {
 }
 
 EXPENSE_HEADS = [
-    'packaging', 'salary', 'rent', 'utilities', 'software', 'transport', 'ad_spend', 'other_expense'
+    'packaging', 'salary', 'rent', 'utilities', 'software', 'transport', 'ad_spend', 'other_expense',
+    'courier', 'courier_delivery', 'courier_cod_fee', 'courier_return_fee'
 ]
+
+EXPENSE_HEAD_ALIASES = {
+    'courier': 'courier_delivery',
+    'courier_charges': 'courier_delivery',
+    'advertising': 'ad_spend',
+    'ads': 'ad_spend',
+    'internet': 'utilities',
+    'fixed_cost': 'other_expense',
+}
 
 SOURCES = [
     'courier_api', 'courier_sheet_upload', 'meta_api', 'whatsapp_confirmed',

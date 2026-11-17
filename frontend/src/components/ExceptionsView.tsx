@@ -231,7 +231,7 @@ export function ExceptionsView({ onRefreshParent, showToast, netProfitPoisha = 0
                 key={p}
                 type="button"
                 onClick={() => setTimeRange(p)}
-                className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
+                className={`px-3 py-1 text-sm font-medium rounded-lg transition-colors ${
                   timeRange === p ? 'bg-[#025033] text-white shadow-2xs' : 'text-[#4B5563] hover:text-[#111827]'
                 }`}
               >
@@ -243,7 +243,7 @@ export function ExceptionsView({ onRefreshParent, showToast, netProfitPoisha = 0
           <button
             type="button"
             onClick={handleExportList}
-            className="px-3.5 py-2 text-xs font-medium text-[#025033] bg-white border border-[#E5EAE7] rounded-xl hover:bg-[#F9FAF8] transition-colors shadow-2xs"
+            className="px-3.5 py-2 text-sm font-semibold text-[#025033] bg-white border border-[#E5EAE7] rounded-xl hover:bg-[#F9FAF8] transition-colors shadow-2xs"
           >
             Export list
           </button>
@@ -251,7 +251,7 @@ export function ExceptionsView({ onRefreshParent, showToast, netProfitPoisha = 0
           <button
             type="button"
             onClick={handleAskCourier}
-            className="px-4 py-2 text-xs font-medium text-white bg-[#025033] hover:bg-[#033E28] rounded-xl transition-colors shadow-2xs flex items-center gap-1.5"
+            className="px-4 py-2 text-sm font-semibold text-white bg-[#025033] hover:bg-[#033E28] rounded-xl transition-colors shadow-2xs flex items-center gap-1.5"
           >
             Ask courier for status
           </button>
@@ -264,19 +264,19 @@ export function ExceptionsView({ onRefreshParent, showToast, netProfitPoisha = 0
           {/* Left Metrics (3 Primary Columns) */}
           <div className="lg:col-span-7 grid grid-cols-3 divide-x divide-[#FCD34D]/60 pr-2">
             <div className="pr-4">
-              <div className="text-[11px] font-bold tracking-wider text-[#92400E] uppercase">UNRESOLVED VALUE</div>
+              <div className="text-xs font-bold tracking-wider text-[#92400E] uppercase">UNRESOLVED VALUE</div>
               <div className="text-2xl sm:text-3xl font-extrabold text-[#78350F] mt-1">
                 ৳{formatTaka(summary.total_unresolved_poisha)}
               </div>
             </div>
             <div className="px-4">
-              <div className="text-[11px] font-bold tracking-wider text-[#92400E] uppercase">ITEMS</div>
+              <div className="text-xs font-bold tracking-wider text-[#92400E] uppercase">ITEMS</div>
               <div className="text-2xl sm:text-3xl font-extrabold text-[#78350F] mt-1">
                 {summary.count}
               </div>
             </div>
             <div className="pl-4">
-              <div className="text-[11px] font-bold tracking-wider text-[#92400E] uppercase">OLDEST</div>
+              <div className="text-xs font-bold tracking-wider text-[#92400E] uppercase">OLDEST</div>
               <div className="text-2xl sm:text-3xl font-extrabold text-[#78350F] mt-1">
                 {summary.oldest_days || 0} days
               </div>
@@ -339,8 +339,8 @@ export function ExceptionsView({ onRefreshParent, showToast, netProfitPoisha = 0
 
         {/* Table Container */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-[#FAFCF9] text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider border-b border-[#E5EAE7]">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-[#FAFCF9] text-xs font-bold text-slate-600 uppercase tracking-wider border-b border-[#E5EAE7]">
               <tr>
                 <th scope="col" className="px-6 py-3.5">TYPE</th>
                 <th scope="col" className="px-6 py-3.5">ORDER / SKU</th>

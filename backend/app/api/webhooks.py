@@ -149,6 +149,12 @@ async def incoming_whatsapp_message(request: Request):
                 sender = m.get('from')
                 text = m.get('text', {}).get('body') or ''
                 if sender and text:
-                    await handle_incoming(sender, text)
+                    replies = await handle_incoming(sender, text)
+                    try:
+                        from app.whatsapp.client import send_text
+                        for rep in replies:
+                            await send_text(sender, rep)
+                    except Exception:
+                        pass
 
     return {"ok": True}

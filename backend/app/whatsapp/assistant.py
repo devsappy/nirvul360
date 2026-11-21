@@ -6,6 +6,7 @@ WhatsApp Assistant Conversation Loop.
 3. "না" -> discarded
 """
 import json
+import re
 from typing import Dict, Any, List
 from app.db.session import insert, update, one, all, tx
 from app.lib.dates import now_iso, today
@@ -13,7 +14,7 @@ from app.lib.money import format_taka, format_taka_bn
 from app.domain.accounts import ACCOUNTS
 from app.domain.entries import record_expense, record_withdrawal
 from app.domain.reports import profit_and_loss
-from app.whatsapp.parser import parse_message, is_yes, is_no
+from app.whatsapp.parser import parse_message, parse_message_llm, is_yes, is_no
 from app.lib.events import event_bus
 
 HEAD_BN = {
@@ -59,6 +60,16 @@ async def handle_incoming(from_phone: str, text: str) -> List[str]:
 
     # 3. Parse new expense message
     parsed = parse_message(text)
+    parser_type = 'regex'
+
+    # Fall back to OpenAI LLM if regex could not extract an amount, categorized as generic other_expense, or has complex patterns (e.g. 5k)
+    needs_llm = not parsed['amount'] or parsed['head'] == 'other_expense' or bool(re.search(r'\b\d+\s*[kK]\b', text))
+    if needs_llm:
+        llm_res = await parse_message_llm(text)
+        if llm_res and llm_res.get('amount'):
+            parsed = llm_res
+            parser_type = 'llm_openai'
+
     if not parsed['amount']:
         return ["টাকার পরিমাণ বুঝতে পারিনি। অনুগ্রহ করে টাকার অঙ্ক স্পষ্টভাবে লিখুন (যেমন: 'packaging 500 tk' বা 'ভাড়া ১৫০০০ টাকা')।"]
 
@@ -67,7 +78,7 @@ async def handle_incoming(from_phone: str, text: str) -> List[str]:
         'amount': parsed['amount'],
         'head': parsed['head'],
         'date': today(),
-        'note': f"WhatsApp: {text}",
+        'note': parsed.get('note') or f"WhatsApp: {text}",
     }
 
     draft_id = insert('whatsapp_drafts', {
@@ -78,7 +89,7 @@ async def handle_incoming(from_phone: str, text: str) -> List[str]:
         'intent': parsed['intent'],
         'draft': json.dumps(draft_payload),
         'raw_text': text,
-        'parser': 'regex',
+        'parser': parser_type,
         'created_at': now_iso(),
     })
 

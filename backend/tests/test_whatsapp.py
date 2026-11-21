@@ -50,3 +50,13 @@ async def test_whatsapp_two_step_confirmation_machine():
     # After confirmation, double-entry posted into PnL!
     pnl_after = profit_and_loss(m_id, d[:7] + '-01', d)
     assert pnl_after['sections']['packaging']['amount'] == 40000
+
+@pytest.mark.asyncio
+async def test_whatsapp_llm_fallback_parsing():
+    from app.whatsapp.parser import parse_message_llm
+    # Test conversational Bengali message that regex might miss or under-parse
+    res = await parse_message_llm("দোকান ভাড়ার জন্য 5k দিলাম")
+    if res:  # Only asserts if API key is active and online
+        assert res['intent'] == 'expense'
+        assert res['head'] == 'rent'
+        assert res['amount'] == 500000  # 5,000 Taka in poisha

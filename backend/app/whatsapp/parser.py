@@ -3,8 +3,11 @@ Bangla & English WhatsApp expense message parser.
 Extracts amounts (digits & Bengali words), expense heads, and intent.
 Ambiguous amounts or multiple amounts are questioned, never guessed.
 """
+import os
+import json
 import re
 from typing import Dict, Any, List, Optional
+import httpx
 from app.lib.money import bn_to_ascii_digits
 
 HEAD_KEYWORDS = [
@@ -83,3 +86,67 @@ def parse_message(text: str) -> Dict[str, Any]:
         'raw_text': text,
         'name': name,
     }
+
+async def parse_message_llm(text: str) -> Optional[Dict[str, Any]]:
+    """
+    Parse informal WhatsApp expense and withdrawal messages in Bangla, Banglish, or English using OpenAI.
+    """
+    key = os.getenv("OPENAI_API_KEY")
+    if not key or key.strip() in ("", "your_openai_api_key"):
+        return None
+
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    system_prompt = (
+        "You are an expert accounting assistant for Bangladeshi e-commerce and retail merchants. "
+        "Analyze informal WhatsApp messages in Bengali, Banglish, or English. "
+        "Extract financial transactions (expenses, withdrawals, price changes). "
+        "Categories (head): 'packaging', 'salary', 'rent', 'utilities', 'software', 'transport', 'ad_spend', 'other_expense'. "
+        "Amount: extract total amount in Bangladeshi Taka as a float (e.g. 500.0, 5000.0 for '5k', 150.0 for 'দেড়শ টাকা'). "
+        "If no transaction or amount is mentioned, amount_taka should be null. "
+        "Return pure JSON format: "
+        '{"intent": "expense"|"withdrawal"|"price_change"|"supplier_payment"|"other", '
+        '"amount_taka": float|null, '
+        '"head": string, '
+        '"note": string}'
+    )
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {key.strip()}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": text},
+                    ],
+                    "response_format": {"type": "json_object"},
+                    "temperature": 0.0,
+                },
+            )
+            if resp.status_code == 200:
+                result = resp.json()
+                content = result["choices"][0]["message"]["content"]
+                parsed = json.loads(content)
+                amt_taka = parsed.get("amount_taka")
+                amt_poisha = int(round(float(amt_taka) * 100)) if amt_taka is not None else None
+                head = parsed.get("head")
+                valid_heads = {'packaging', 'salary', 'rent', 'utilities', 'software', 'transport', 'ad_spend', 'other_expense'}
+                if head not in valid_heads:
+                    head = 'other_expense'
+                return {
+                    'intent': parsed.get('intent', 'expense'),
+                    'amount': amt_poisha,
+                    'head': head,
+                    'note': parsed.get('note') or text,
+                    'raw_text': text,
+                    'name': None,
+                    'parser': 'llm_openai',
+                }
+    except Exception:
+        return None
+    return None

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { BoltIcon, GoogleIcon, MetaIcon } from '@/components/icons';
 import { api } from '@/lib/api';
 
@@ -120,10 +121,13 @@ export default function LoginPage() {
 
         {/* Top-Left Frosted Brand Badge */}
         <div className="relative z-10">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[#3A8067] bg-[#00432C]/80 backdrop-blur-md text-[#FFFFFF] text-xs font-black uppercase tracking-widest shadow-xl">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[#3A8067] bg-[#00432C]/80 backdrop-blur-md text-[#FFFFFF] text-xs font-black uppercase tracking-widest shadow-xl hover:bg-[#00432C] hover:border-[#CAE4D8] transition"
+          >
             <BoltIcon className="w-4 h-4 text-[#CAE4D8]" />
             <span>NIRVUL360</span>
-          </div>
+          </Link>
         </div>
 
         {/* Bottom Hero Statement */}
@@ -144,13 +148,14 @@ export default function LoginPage() {
       <div className="flex-1 bg-[#FAFCF9] h-full flex flex-col justify-between overflow-y-auto relative z-20 md:rounded-l-[44px] lg:rounded-l-[60px] p-6 sm:p-10 lg:p-12 xl:p-16 shadow-2xl border-l border-[#E5EAE7]">
         <div className="max-w-lg w-full mx-auto flex flex-col justify-between h-full py-1">
           
-          {/* Top Row: Mobile Logo & Desktop Sign-in / Create Switcher */}
-          <div className="flex items-center justify-between md:justify-end gap-3 text-sm font-medium text-[#3A8067] mb-3 sm:mb-2">
-            {/* Mobile-only brand badge */}
-            <div className="md:hidden flex items-center gap-2 text-[#025033] font-bold text-base">
-              <BoltIcon className="w-5 h-5 text-[#025033]" />
-              <span>nirvul360</span>
-            </div>
+          {/* Top Row: Back to Home & Desktop Sign-in / Create Switcher */}
+          <div className="flex items-center justify-between gap-3 text-sm font-medium text-[#3A8067] mb-3 sm:mb-2">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#025033] hover:text-[#05572F] transition px-2.5 py-1.5 rounded-lg hover:bg-[#E6F7EF]"
+            >
+              ← Back to Home
+            </Link>
             
             {mode === 'signin' ? (
               <div className="flex items-center gap-2.5">

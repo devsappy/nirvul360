@@ -37,6 +37,7 @@ import { User, DashboardData, Order, Product, CashAccount } from '@/types';
 import { api } from '@/lib/api';
 import { realtime } from '@/lib/events';
 import { InfoIcon } from '@/components/icons';
+import LandingPage from './landing/page';
 
 export default function Home() {
   const router = useRouter();
@@ -146,18 +147,14 @@ export default function Home() {
             loadData();
           }
         } else {
-          router.replace('/login');
-          if (typeof window !== 'undefined') {
-            window.location.href = '/login';
-          }
+          setUser(null);
+          setLoading(false);
         }
       })
       .catch(() => {
         if (!mounted) return;
-        router.replace('/login');
-        if (typeof window !== 'undefined') {
-          window.location.href = '/login';
-        }
+        setUser(null);
+        setLoading(false);
       });
 
     return () => {
@@ -244,12 +241,15 @@ export default function Home() {
   };
 
   if (!user) {
-    return (
-      <div className="min-h-screen bg-[#E6F7EF] flex flex-col items-center justify-center gap-3">
-        <div className="w-8 h-8 rounded-full border-2 border-[#CAE4D8] border-t-[#025033] animate-spin" />
-        <span className="text-xs font-semibold text-[#3A8067]">Checking authentication...</span>
-      </div>
-    );
+    if (loading) {
+      return (
+        <div className="min-h-screen bg-[#E6F7EF] flex flex-col items-center justify-center gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-[#CAE4D8] border-t-[#025033] animate-spin" />
+          <span className="text-xs font-semibold text-[#3A8067]">Loading...</span>
+        </div>
+      );
+    }
+    return <LandingPage />;
   }
 
   // Account Suspended Screen for Tenant Users (Agency Owner / Accountant)

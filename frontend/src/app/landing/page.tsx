@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useCallback, useState } from 'react';
+import Link from 'next/link';
 
 /* ------------------------------------------------------------------ */
 /*  Intersection Observer hook for scroll-triggered animations        */
@@ -189,15 +190,15 @@ export default function LandingPage() {
 
             {/* CTA */}
             <div className="hidden md:flex items-center gap-3">
-              <a href="/login" className="text-forest-soft/80 hover:text-white text-sm font-medium transition-colors px-3 py-2">
+              <Link href="/login" className="text-forest-soft/80 hover:text-white text-sm font-medium transition-colors px-3 py-2">
                 Login
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/login"
                 className="bg-forest-soft text-forest-deep font-semibold text-sm px-5 py-2.5 rounded-full hover:bg-white transition-all hover:shadow-lg hover:shadow-forest-soft/20"
               >
                 Start Free
-              </a>
+              </Link>
             </div>
 
             {/* Mobile menu button */}
@@ -220,8 +221,8 @@ export default function LandingPage() {
               </button>
             ))}
             <div className="flex gap-3 mt-4">
-              <a href="/login" className="text-forest-soft/80 hover:text-white text-sm font-medium py-2.5 px-3">Login</a>
-              <a href="/login" className="bg-forest-soft text-forest-deep font-semibold text-sm px-5 py-2.5 rounded-full">Start Free</a>
+              <Link href="/login" className="text-forest-soft/80 hover:text-white text-sm font-medium py-2.5 px-3">Login</Link>
+              <Link href="/login" className="bg-forest-soft text-forest-deep font-semibold text-sm px-5 py-2.5 rounded-full">Start Free</Link>
             </div>
           </div>
         )}
@@ -277,13 +278,13 @@ export default function LandingPage() {
           {/* CTA Buttons */}
           <Reveal delay={300}>
             <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <a
+              <Link
                 href="/login"
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-forest-soft text-forest-deep font-bold text-base px-8 py-3.5 rounded-full hover:bg-white hover:shadow-xl hover:shadow-forest-soft/20 transition-all group"
               >
                 Start Free — No Card Required
                 <span className="group-hover:translate-x-1 transition-transform">{Icons.arrowRight}</span>
-              </a>
+              </Link>
               <button
                 onClick={() => scrollTo('features')}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 border border-forest-soft/40 text-forest-soft font-semibold text-base px-8 py-3.5 rounded-full hover:bg-forest-soft/10 transition-colors"
@@ -881,12 +882,12 @@ export default function LandingPage() {
                   </ul>
                 </div>
 
-                <a
+                <Link
                   href="/login"
                   className="mt-8 w-full block text-center py-3.5 px-6 rounded-2xl border-2 border-forest-deep text-forest-deep font-bold text-sm hover:bg-forest-deep hover:text-white transition-all shadow-xs"
                 >
                   Get Started Free
-                </a>
+                </Link>
               </div>
             </Reveal>
 
@@ -930,12 +931,12 @@ export default function LandingPage() {
                   </ul>
                 </div>
 
-                <a
+                <Link
                   href="/login"
                   className="mt-8 w-full block text-center py-4 px-6 rounded-2xl bg-forest-deep text-white font-bold text-sm hover:bg-forest-emerald transition-all shadow-lg shadow-forest-deep/20 hover:scale-[1.02]"
                 >
                   Start 14-Day Free Trial
-                </a>
+                </Link>
               </div>
             </Reveal>
 
@@ -975,12 +976,12 @@ export default function LandingPage() {
                   </ul>
                 </div>
 
-                <a
+                <Link
                   href="/login"
                   className="mt-8 w-full block text-center py-3.5 px-6 rounded-2xl border-2 border-forest-deep text-forest-deep font-bold text-sm hover:bg-forest-deep hover:text-white transition-all shadow-xs"
                 >
                   Contact Sales &amp; Onboard
-                </a>
+                </Link>
               </div>
             </Reveal>
           </div>
@@ -1080,13 +1081,13 @@ export default function LandingPage() {
           </Reveal>
           <Reveal delay={200}>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a
+              <Link
                 href="/login"
                 className="inline-flex items-center justify-center gap-2 bg-forest-soft text-forest-deep font-bold text-base px-10 py-4 rounded-full hover:bg-white hover:shadow-xl hover:shadow-forest-soft/20 transition-all group"
               >
                 Start Free — No Credit Card
                 <span className="group-hover:translate-x-1 transition-transform">{Icons.arrowRight}</span>
-              </a>
+              </Link>
               <button
                 onClick={() => scrollTo('features')}
                 className="inline-flex items-center justify-center gap-2 border-2 border-forest-soft/30 text-forest-soft font-semibold text-base px-10 py-4 rounded-full hover:border-forest-soft/60 hover:bg-forest-soft/5 transition-all"

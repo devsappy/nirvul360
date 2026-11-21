@@ -267,12 +267,11 @@ export default function LoginPage() {
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. owner@demo.bd or 01711000001"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
                       autoComplete="username"
-                      className="w-full text-sm sm:text-base text-[#025033] placeholder-[#3A8067] focus:outline-none font-medium bg-transparent"
+                      className="w-full text-sm sm:text-base text-[#025033] focus:outline-none font-medium bg-transparent"
                     />
                   </div>
 
@@ -282,12 +281,11 @@ export default function LoginPage() {
                     </label>
                     <input
                       type="password"
-                      placeholder="••••••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       autoComplete="current-password"
-                      className="w-full text-sm sm:text-base text-[#025033] placeholder-[#3A8067] focus:outline-none font-medium bg-transparent font-mono"
+                      className="w-full text-sm sm:text-base text-[#025033] focus:outline-none font-medium bg-transparent font-mono"
                     />
                   </div>
                 </div>
